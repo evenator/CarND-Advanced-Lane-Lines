@@ -1,4 +1,19 @@
 import cv2
+from PIL import Image
+from matplotlib import pyplot as plt
+
+def save_animation(filename, imgs, duration):
+    frame1 = Image(imgs[0])
+    frame1.save(filename, save_all=True, duration=duration, loop=-1, append_images=[Image(i) for i in imgs[1:]])
+
+def comparison_plot(img1, img2, label1, label2, top_label):
+    f, (left, right) = plt.subplots(1, 2)
+    left.imshow(img1)
+    left.set_title(label1)
+    right.imshow(img2)
+    right.set_title(label2)
+    f.suptitle(top_label)
+    return f
 
 def Grayscale(img):
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)

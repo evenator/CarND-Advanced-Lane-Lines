@@ -4,8 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 import sys
-from util import Grayscale, Undistorter
-import yaml
+from util import Grayscale, Undistorter, comparison_plot
 
 
 def cornersImg(img, board_size, corners):
@@ -82,9 +81,8 @@ def main():
             # Load the image in grayscale mode
             undistorted_img = undistorter.undistortImage(img)
             undistorted_img = undistorted_img[:, :, ::-1] # RGB<->BGR flip
-            plt.figure()
-            plt.imshow(undistorted_img)
-            plt.title(fname)
+            img = img[:, :, ::-1] # RGB<->BGR flip
+            comparison_plot(img, undistorted_img, 'Raw', 'Undistorted', fname)
         plt.show()
 
 
