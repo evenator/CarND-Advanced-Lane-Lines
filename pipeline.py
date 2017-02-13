@@ -10,35 +10,61 @@ import numpy as np
 # TODO: Figure out why not working on test3.jpg
 # TODO: Figure out why not working on test6.jpg
 # TODO: Make this work on straightlines1.jpg (use joint fit)
-
+# TODO: Video pipeline, filtering
 
 def valid(left_line, right_line):
+    '''
+    Check whether a pair of left and right lane lines are a valid
+    detection
+    '''
     # Check that both lines detected
     if not left_line.detected or not right_line.detected:
         print("Both lines not detected")
         return False
     # Check curvature similarity
-    width = abs(1.0/left_curvature - 1.0/right_curvature)
+    width = abs(left.radius() - right.radius())
     if width < 2.0 or width > 5.0:
-        print("Curvatures not similar (width={})".format(width))
+        print("Radii not similar (width={})".format(width))
         return False
     # Check lines parallel
     # by checking the variance of the widths at many points
     y_vals = [0.0, 1.0, 2.0, 5.0, 10.0, 20.0]
-    widths = left_line.vals(y_vals) - right_line.vals(y_vals)
+    widths = left_line.vals_m(y_vals) - right_line.vals_m(y_vals)
     width_var = np.var(widths)
     if width_var > 0.2: # TODO: Tune this
         print("Lines not parallel (width variance={})".format(width_var))
         return False
     # Check curvature is sane
     # See http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm
-    mean_curvature = (2 * left.curvature * right.curvature) / (left.curvature + right.curvature)
-    if mean_curvature > 0.005679: # Curvature for radius = 587 ft
+    mean_curvature = (2 * left.curvature() * right.curvature()) / (left.curvature() + right.curvature())
+    if mean_curvature > 0.005679: # Curvature in 1/m for radius = 587 ft
         print("Curvature is too large (curvature={})".format(mean_curvature))
         return False
     return True
 
-def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_left=None, last_right=None, output_all=False):
+def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_left=None, last_right=None, show_all=False):
+    '''
+    Full processing pipeline for lane lines
+
+    img -- The input image, directly from the camera
+    undistorter -- An Undistorter processor object
+    lane_extractor -- A LaneExtractor processor object
+    transformer -- A GroundProjector processor object
+    lane_fitter -- A LaneFitter processor object
+    last_left -- (optional) A Line object representing the left lane line in the
+        previous frame of video
+    last_right -- (optional) A Line object representing the right lane line in
+        the previous frame of video
+    show_all -- If True, show all intermediate images in PyPlot figures
+        (default False)
+
+    Returns (composite_img, (left_lane, right_lane)
+
+    composite_img -- The input image, undistorted, with the lane drawn on it in
+        green
+    left_lane -- A Line object representing the left lane line
+    right_lane -- A Line object representing the right lane line
+    '''
     undistorted = undistorter.undistortImage(img)
     lane_img = lane_extractor.extract_lanes(undistorted)
     transformed_lane_img = transformer.transformImage(lane_img)
@@ -48,8 +74,8 @@ def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_lef
     curvature_img_warped = transformer.inverseTransformImage(curvature_img, undistorted.shape)
     # TODO: Validity check
     composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
-    if output_all:
-        return (img, 
+    if show_all:
+        return (img,
                 undistorted,
                 lane_img,
                 transformed_lane_img,
@@ -58,12 +84,10 @@ def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_lef
                 curvature_img,
                 curvature_img_warped,
                 composite_img)
-    else:
-        return composite_img, (left_lane, right_lane)
+    return composite_img, (left_lane, right_lane)
 
 def main():
-    # TODO: UI
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Process an image to find lane lines')
     parser.add_argument('--camera-matrix', type=str,
                         help='File path of camera matrix, stored as .npy',
                         default='camera_matrix.npy')
@@ -90,7 +114,6 @@ def main():
     # TODO: Tune lane extractor
     lane_extractor = LaneExtractor(25, (0, pi/3), (30, 100))
     lane_fitter = LaneFitter(args.resolution)
-    # TODO: Video pipeline, filtering
     composite_img, (left_lane, right_lane) = process(input_img, undistorter, lane_extractor, transformer, lane_fitter)
     plt.figure()
     plt.imshow(composite_img)

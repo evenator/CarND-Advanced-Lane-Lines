@@ -1,11 +1,16 @@
+from processors import Undistorter
+from util import comparison_plot
+
 import argparse
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 import os
 import sys
-from util import Grayscale, Undistorter, comparison_plot
 
+def Grayscale(img):
+    '''Convert an image to Grayscale'''
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 def cornersImg(img, board_size, corners):
     '''

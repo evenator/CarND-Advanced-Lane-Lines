@@ -1,27 +1,38 @@
 from datatypes import Line
-from util import XSobel, YSobel, scaled_abs
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks_cwt
 
-class Undistorter(object):
-    def __init__(self, K, D):
-        self._K = K
-        self._D = D
+def scaled_abs(img):
+    '''
+    Take the absolute value of an image, scale it to [0,255] and cast it to uint8
+    '''
+    abs_img = np.abs(img)
+    return np.uint8(255 * abs_img / np.max(abs_img))
 
-    def undistortImage(self, src):
-        '''
-        Undistort the raw camera image
-        '''
-        return cv2.undistort(src, self._K, self._D)
+def XSobel(img, ksize=3):
+    '''
+    Perform Sobel gradient along the X axis
+    '''
+    return cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ksize)
+
+def YSobel(img, ksize=3):
+    '''
+    Perform Sobel gradient along the Y axis
+    '''
+    return cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ksize)
 
 class GroundProjector(object):
+    '''
+    Processor for transforming images from camera perspective to top-down view
+    and vice-versa, using perspective transform.
+    '''
     def __init__(self, P, output_size=None):
         '''
         Create a GroundProjector from a Perspective matrix
-        
+
         P -- Perspective transform matrix, as created by
             cv2.getPerspectiveTransform
         output_size -- Default shape of the output image **in pixels** as a
@@ -34,7 +45,7 @@ class GroundProjector(object):
     def transformImage(self, src, output_size=None):
         '''
         Transform an image from camera perspective to top-down view
-        
+
         src -- Image to transform, as a numpy Array-like
         output_size -- Shape of the output image **in pixels** as a tuple
             (width, height). If set to None, use the default output shape of
@@ -50,7 +61,7 @@ class GroundProjector(object):
     def inverseTransformImage(self, src, output_shape):
         '''
         Transform an image from top-down view to camera perspective
-        
+
         src -- Image to transform, as a numpy Array-like
         output_shape -- Shape of the output image **in pixels** as a tuple
             (width, height).
@@ -61,7 +72,7 @@ class GroundProjector(object):
     def from_point_correspondence(cls, image_pts, object_points, output_resolution, output_size=None):
         '''
         Create a GroundProjector from image/point correspondences
-        
+
         image_pts -- At least 4 pixel coordinates in image space
         object_pts -- At least 4 real-world object coordinates corresponding to
             the points in image_pts, with coordinates in meters.
@@ -78,13 +89,57 @@ class GroundProjector(object):
         return cls(P, output_size)
 
 
+
+class Undistorter(object):
+    '''
+    Processor to perform dewarping using OpenCV's undistort function
+    '''
+    def __init__(self, K, D):
+        '''
+        Initialize the processor
+
+        K -- Camera matrix (2-D matrix of 3x3 floats)
+        D -- Distortion coefficients (1-D vector of 5 floats)
+        '''
+        self._K = K
+        self._D = D
+
+    def undistortImage(self, src):
+        '''
+        Undistort the raw camera image
+        '''
+        return cv2.undistort(src, self._K, self._D)
+
+
 class LaneExtractor(object):
+    '''
+    Processor to take in a color (RGB) image in camera perspective and return
+    a binary image in camera perspective that contains mostly lane lines
+    '''
     def __init__(self, sobel_kernel_size, direction_thresh, gradient_mag_thresh):
+        '''
+        Constructor
+
+        sobel_kernel_size -- Size of kernel for gradient calculate (odd number
+            of pixels)
+        direction_thresh -- (min, max) tuple of thresholds for the direction
+            angle of the gradient. Angles are in the range [0, pi/2]
+        gradient_mag_thresh -- (min, max) tuple of thresholds for the magnitude
+            of the gradient
+        '''
         self._k = sobel_kernel_size
         self._direction_thresh = direction_thresh
         self._gradient_mag_thresh = gradient_mag_thresh
 
     def extract_lanes(self, img, show_plots=False):
+        '''
+        Process an RGB image and return a binary image
+
+        img -- The RGB image to process (in camera perspective)
+        show_plots -- Show intermediate images in PyPlot figures (default False)
+
+        Returns a binary image in the camera perspective
+        '''
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
         s_channel = hls[:,:,2]
         sobel_x = XSobel(s_channel, ksize=self._k)
@@ -107,34 +162,60 @@ class LaneExtractor(object):
         lanes = np.dstack([magnitude_binary, direction_binary]).all(-1)
         return np.uint8(lanes)
 
+# TODO: Restructure this class and start using hints
+# TODO: Rename private methods
+# TODO: Add option to plot intermedia images
 class LaneFitter(object):
+    '''
+    A Processor that takes in a binary lane image in top-down perspective and
+    finds the lane lines.
+    '''
     def __init__(self, resolution):
+        '''
+        Constructor
+
+        resolution -- Resolution of the input image in meters/pixel
+        '''
         self.resolution = resolution
         self.search_box_size_margin = resolution
         self.search_box_height = int(resolution/2)
         self.recenter_thresh = 1000
-    
+
     def close_img(self, img):
+        '''
+        Perform a morphological closing on the image to join clusters of
+        separate pixels in blobs.
+        '''
         kernel_size = int(self.resolution/2)
         morph_kernel = np.ones((int(self.resolution/2), int(self.resolution/4)))
         return cv2.morphologyEx(img, cv2.MORPH_CLOSE, morph_kernel)
-    
+
     def find_lane(self, img, start_x, hint = None):
-        # TODO: Use hints
+        '''
+        Find the lane line that begins at the position `start_x` at the bottom
+        of the image and fit a quadratic polynomial to it. Uses the `hint` line
+        to mask off likely pixels. If no hint` is given, performs a search using
+        `find_lane_points`.
+
+        img -- Binary lane image in top-down perspective to search
+        start_x -- The rough position of the lane line's beginning at the bottom
+            of the image
+        hint -- A lane line to use as a hint to avoid having to do a sliding
+            window search, i.e. a detection in a previous frame (optional)
+        '''
         lane_indexes = self.find_lane_points(img, start_x, hint)
         line = Line()
         line.closest_y = img.shape[0]
         line.poly = np.polyfit(lane_indexes[0], lane_indexes[1], 2)
         return line
-    
-    def find_lane_points(self, img, start_x, hint=None):
+
+    def find_lane_points(self, img, start_x):
         '''
         Find a single lane using a sliding filter. Initialize the
         sliding filter at the bottom of the image using start_x.
+
         img -- Image to search in
         start_x -- X coordinate to start the search
-        hint -- A line object to use as a hint (may be the last detection)
-                Currently unused.
         '''
         nonzero = img.nonzero()
         nonzero = zip(nonzero[0], nonzero[1])
@@ -157,11 +238,12 @@ class LaneFitter(object):
             lane_indexes.append(points)
         lane_indexes = np.concatenate(lane_indexes, 1)
         return lane_indexes
-    
+
     def find_peaks(self, data, order=None):
         '''
-        Find the coordinates of the peaks in the 1-D vector, sorted by height
-        
+        Find the coordinates of the peaks in the 1-D vector, sorted by
+        magnitude
+
         data -- Data to find peaks in
         '''
         if order is None:
@@ -171,7 +253,7 @@ class LaneFitter(object):
         sort_order = np.argsort(data[peaks])
         sorted_peaks = np.flipud(peaks[sort_order])
         return sorted_peaks
-    
+
     def smoothed_histogram(self, img):
         '''
         Calculate a histogram of the image over the x-axis, then smooth
@@ -183,8 +265,17 @@ class LaneFitter(object):
         w = np.ones(window, float)/window
         smoothed_histogram = np.convolve(histogram, w, 'same')
         return smoothed_histogram
-        
+
     def fit_lanes(self, img, last_left = None, last_right = None):
+        '''
+        Find both lanes in the top-down binary lane image.
+
+        img -- Binary top-down lane image to search
+        last_left -- Previous detection of left lane line to use as a hint
+            (optional)
+        last_right -- Previous detection of the right lane line to use as a hint
+            (optional)
+        '''
         height = img.shape[0]
         width = img.shape[1]
         closed_img = self.close_img(img)

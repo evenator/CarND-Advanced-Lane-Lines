@@ -3,11 +3,33 @@ from PIL import Image
 from matplotlib import pyplot as plt
 import numpy as np
 
+'''
+Various utility functions for drawing lanes and displaying images
+'''
+
 def save_animation(filename, imgs, duration):
+    '''
+    Create a looping animated GIF image
+
+    filename -- Path to save the image
+    imgs -- Array-like of frames for the animation (must all be the same shape)
+    duration -- Duration (seconds) to show each frame
+    '''
     frame1 = Image(imgs[0])
     frame1.save(filename, save_all=True, duration=duration, loop=-1, append_images=[Image(i) for i in imgs[1:]])
 
 def comparison_plot(img1, img2, label1, label2, top_label):
+    '''
+    Plot two images side-by-side for comparison as a PyPlot figure
+
+    img1 -- The image to show in the left subplot
+    img2 -- The image to show in the right subplot
+    label1 -- The title of the left subplot
+    label2 -- The title of the right subplot
+    top_label -- The overall title of the figure
+
+    Returns The PyPlot figure handle
+    '''
     f, (left, right) = plt.subplots(1, 2)
     left.imshow(img1)
     left.set_title(label1)
@@ -19,6 +41,7 @@ def comparison_plot(img1, img2, label1, label2, top_label):
 def draw_lane(left_line, right_line, img_shape, resolution):
     '''
     Draw the filled-in lane on the ground image
+
     left_lane -- Line object representing the left lane
     right_lane -- Line object representing the right lane
     img_shape -- Shape of the output image **in pixels** as (width, height) tuple
@@ -37,7 +60,18 @@ def draw_lane(left_line, right_line, img_shape, resolution):
     return canvas
 
 def plot_on_img(img, *poly, color='b'):
-    ''' Plot an arbitrary number of arbitrary polynomials on an image'''
+    '''
+    Plot an arbitrary number of arbitrary polynomials on an image. Note that
+    the independent variable is **y**, not x, and that image coordinate
+    conventions apply
+
+    img -- Image to plot on top of
+    poly -- Any number of polynomials in pixel space, expressed as numpy-style
+        coefficient vectors
+    color -- Matplotlib color (default 'b') to plot the polynomials in
+
+    Returns a 3-channel numpy image
+    '''
     ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
     fig = plt.figure()
     if len(img.shape) < 3 or img.shape[2] < 3:
@@ -52,16 +86,3 @@ def plot_on_img(img, *poly, color='b'):
     out_img = out_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     return out_img
 
-def Grayscale(img):
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-def XSobel(img, ksize=3):
-    return cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ksize)
-
-
-def scaled_abs(img):
-    abs_img = np.abs(img)
-    return np.uint8(255 * abs_img / np.max(abs_img))
-
-def YSobel(img, ksize=3):
-    return cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ksize)

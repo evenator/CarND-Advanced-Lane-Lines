@@ -1,6 +1,9 @@
 import numpy as np
 
 class Line(object):
+    '''
+    An object to represent a detected lane line
+    '''
     def __init__(self):
         self.detected = False
         self.poly = [] # Polynomial coefficients
@@ -16,6 +19,12 @@ class Line(object):
     def curvature(self):
         """ Return the curvature in 1/meters"""
         return 1.0/self.radius()
+    def vals_m(self, y_vals):
+        '''
+        Calculate x values (meters) for the given series of y_vals (meters)
+        '''
+        y_vals = np.array(y_vals) * self.resolution
+        return self.vals(y_vals) / self.resolution
     def vals(self, y_vals):
         '''
         Calculate x values (pixels) for the given series of y_vals (pixels)
