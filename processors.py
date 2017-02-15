@@ -145,6 +145,13 @@ class LaneExtractor(object):
         s_channel = hls[:,:,2]
         sobel_x = XSobel(s_channel, ksize=self._k)
         sobel_y = YSobel(s_channel, ksize=self._k)
+        if show_plots:
+            plt.figure()
+            plt.title('X-Gradient')
+            plt.imshow(sobel_x, cmap='gray')
+            plt.figure()
+            plt.title('Y-Gradient')
+            plt.imshow(sobel_y, cmap='gray')
         dxy = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
         magnitude_scaled = scaled_abs(dxy)
         magnitude_binary = np.logical_and(magnitude_scaled >= self._gradient_mag_thresh[0],
@@ -171,14 +178,17 @@ class LaneFitter(object):
     A Processor that takes in a binary lane image in top-down perspective and
     finds the lane lines.
     '''
-    def __init__(self, resolution):
+    def __init__(self, resolution, search_box_size_margin=None):
         '''
         Constructor
 
         resolution -- Resolution of the input image in meters/pixel
         '''
         self.resolution = resolution
-        self.search_box_size_margin = resolution
+        if search_box_size_margin is None:
+            self.search_box_size_margin = resolution
+        else:
+            self.search_box_size_margin = search_box_size_margin
         self.search_box_height = int(resolution/2)
         self.recenter_thresh = 1000
 
@@ -218,8 +228,6 @@ class LaneFitter(object):
         img -- Image to search in
         start_x -- X coordinate to start the search
         '''
-        nonzero = img.nonzero()
-        nonzero = zip(nonzero[0], nonzero[1])
         margin = int(self.search_box_size_margin)
         height = int(self.search_box_height)
         x_center = int(start_x)
