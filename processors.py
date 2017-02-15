@@ -311,12 +311,17 @@ class LaneFitter(object):
         closed_img = self.close_img(img)
         smoothed_histogram = self.smoothed_histogram(closed_img[int(height/2):,:])
         sorted_peaks = self.find_peaks(smoothed_histogram)
-        if sorted_peaks[0] < sorted_peaks[1]:
-            left_start = sorted_peaks[0]
-            right_start = sorted_peaks[1]
+        line1 = sorted_peaks[0]
+        for line2 in sorted_peaks[1:]:
+            # Ensure that the second line is at least 2 meters away from the first one
+            if abs(line2 - line1)/float(self.resolution) > 2.0:
+                break
+        if line1 < line2:
+            left_start = line1
+            right_start = line2
         else:
-            left_start = sorted_peaks[1]
-            right_start = sorted_peaks[0]
+            left_start = line2
+            right_start = line1
         left_lane_points = self.find_lane_points(img, left_start)
         right_lane_points = self.find_lane_points(img, right_start)
         left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points)

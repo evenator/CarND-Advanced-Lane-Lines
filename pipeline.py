@@ -8,10 +8,8 @@ import matplotlib.image as mpimg
 from moviepy.editor import VideoFileClip
 import numpy as np
 
-# TODO: Figure out why not working on test3.jpg
 # TODO: Figure out why not working on test6.jpg
-# TODO: Make this work on straightlines1.jpg (use joint fit)
-# TODO: Video pipeline, filtering
+# TODO: Filtering, hints
 
 def valid(left_line, right_line):
     '''
@@ -105,7 +103,7 @@ def main():
     parser.add_argument('input_file', type=str,
                         help='File path of the image/video to process')
     parser.add_argument('output_file', type=str,
-                        help="File path to store the output")
+                        help="File path to store the output", nargs='?')
     args = parser.parse_args()
     K = np.load(args.camera_matrix)
     D = np.load(args.distortion_coefficients)
@@ -128,8 +126,9 @@ def main():
         plt.figure()
         plt.imshow(composite_img)
         plt.show()
-        print("Saving file to {}".format(args.output_file))
-        mpimg.imsave(args.output_file, composite_img)
+        if args.output_file:
+            print("Saving file to {}".format(args.output_file))
+            mpimg.imsave(args.output_file, composite_img)
     elif input_ext in ['mp4']:
         process_frame = lambda frame: process(frame, undistorter, lane_extractor, transformer, lane_fitter)[0]
         clip = VideoFileClip(args.input_file)
