@@ -5,6 +5,7 @@ import argparse
 import cv2
 from math import pi
 import matplotlib.image as mpimg
+from moviepy.editor import VideoFileClip
 import numpy as np
 
 # TODO: Figure out why not working on test3.jpg
@@ -65,27 +66,31 @@ def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_lef
     left_lane -- A Line object representing the left lane line
     right_lane -- A Line object representing the right lane line
     '''
-    undistorted = undistorter.undistortImage(img)
-    lane_img = lane_extractor.extract_lanes(undistorted)
-    transformed_lane_img = transformer.transformImage(lane_img)
-    (left_lane, right_lane) = lane_fitter.fit_lanes(transformed_lane_img, last_left, last_right)
-    polyfit_img = plot_on_img(transformed_lane_img, left_lane.poly, right_lane.poly, color='yellow')
-    curvature_img = draw_lane(left_lane, right_lane, transformed_lane_img.shape, lane_fitter.resolution)
-    curvature_img_warped = transformer.inverseTransformImage(curvature_img, undistorted.shape)
-    # TODO: Validity check
-    composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
-    if show_all:
-        return (img,
-                undistorted,
-                lane_img,
-                transformed_lane_img,
-                (left_lane, right_lane),
-                polyfit_img,
-                curvature_img,
-                curvature_img_warped,
-                composite_img)
-    return composite_img, (left_lane, right_lane)
-
+    try:
+        undistorted = undistorter.undistortImage(img)
+        lane_img = lane_extractor.extract_lanes(undistorted)
+        transformed_lane_img = transformer.transformImage(lane_img)
+        (left_lane, right_lane) = lane_fitter.fit_lanes(transformed_lane_img, last_left, last_right)
+        curvature_img = draw_lane(left_lane, right_lane, transformed_lane_img.shape, lane_fitter.resolution)
+        curvature_img_warped = transformer.inverseTransformImage(curvature_img, undistorted.shape)
+        # TODO: Validity check
+        composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
+        if show_all:
+            polyfit_img = plot_on_img(transformed_lane_img, left_lane.poly, right_lane.poly, color='yellow')
+            return (img,
+                    undistorted,
+                    lane_img,
+                    transformed_lane_img,
+                    (left_lane, right_lane),
+                    polyfit_img,
+                    curvature_img,
+                    curvature_img_warped,
+                    composite_img)
+        return composite_img, (left_lane, right_lane)
+    except Exception as e:
+        # TODO: This is a quick hack
+        print("Exception: {}".format(e))
+        return undistorted, (Line(), Line())
 def main():
     parser = argparse.ArgumentParser(description='Process an image to find lane lines')
     parser.add_argument('--camera-matrix', type=str,
@@ -97,12 +102,13 @@ def main():
     parser.add_argument('--resolution', type=int,
                         help='Resolution (px/meter) for top-down images',
                         default=200)
-    parser.add_argument('image', type=str,
-                        help='File path of the image to process')
+    parser.add_argument('input_file', type=str,
+                        help='File path of the image/video to process')
+    parser.add_argument('output_file', type=str,
+                        help="File path to store the output")
     args = parser.parse_args()
     K = np.load(args.camera_matrix)
     D = np.load(args.distortion_coefficients)
-    input_img = mpimg.imread(args.image)
     undistorter = Undistorter(K, D)
     # TODO: Document these numbers
     P = np.array([[ -6.16890178e-01,  -1.79811526e+00,   1.14922653e+03],
@@ -114,10 +120,23 @@ def main():
     # TODO: Tune lane extractor
     lane_extractor = LaneExtractor(25, (0, pi/3), (30, 100))
     lane_fitter = LaneFitter(args.resolution)
-    composite_img, (left_lane, right_lane) = process(input_img, undistorter, lane_extractor, transformer, lane_fitter)
-    plt.figure()
-    plt.imshow(composite_img)
-    plt.show()
 
+    input_ext = args.input_file[-3:]
+    if input_ext in ['jpg', 'png']:
+        input_img = mpimg.imread(args.input_file)
+        composite_img, (left_lane, right_lane) = process(input_img, undistorter, lane_extractor, transformer, lane_fitter)
+        plt.figure()
+        plt.imshow(composite_img)
+        plt.show()
+        print("Saving file to {}".format(args.output_file))
+        mpimg.imsave(args.output_file, composite_img)
+    elif input_ext in ['mp4']:
+        process_frame = lambda frame: process(frame, undistorter, lane_extractor, transformer, lane_fitter)[0]
+        clip = VideoFileClip(args.input_file)
+        clip = clip.fl_image(process_frame)
+        print("Writing video file to {}".format(args.output_file))
+        clip.write_videofile(args.output_file, audio=False)
+    else:
+        print("Invalid input file extension .{}".format(input_ext))
 if __name__ == "__main__":
     main()

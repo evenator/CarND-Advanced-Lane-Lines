@@ -267,7 +267,7 @@ class LaneFitter(object):
         smoothed_histogram = np.convolve(histogram, w, 'same')
         return smoothed_histogram
 
-    def find_two_lanes(self, left_lane_points, right_lane_points):
+    def find_two_lanes(self, left_lane_points, right_lane_points, show_plot=False):
         '''
         Perform a joint polynomial fit that constrains the two lane lines
         to be parallel.
@@ -276,25 +276,23 @@ class LaneFitter(object):
         right_lane_points -- list of coordinates of points in the right lane line
         '''
         x = np.concatenate((left_lane_points[1], right_lane_points[1]))
-        print("X: {}".format(x.shape))
         n_left_points = len(left_lane_points[0])
         n_right_points = len(right_lane_points[0])
         y = np.concatenate((np.stack((left_lane_points[0]**2, left_lane_points[0], np.ones(n_left_points), np.zeros(n_left_points)), axis=1),
                             np.stack((right_lane_points[0]**2, right_lane_points[0], np.zeros(n_right_points), np.ones(n_right_points)), axis=1)))
-        print("Y: {}".format(y.shape))
         p = solve_least_squares(y, x)[0]
-        print("p: {}".format(p))
         left_line = Line()
         right_line = Line()
         left_line.poly = np.array([p[0], p[1], p[2]])
         right_line.poly = np.array([p[0], p[1], p[3]])
 
-        plt.figure()
-        plt.plot(left_lane_points[0], left_lane_points[1], 'b.')
-        plt.plot(right_lane_points[0], right_lane_points[1], 'r.')
-        plt.plot(left_lane_points[0], left_line.vals(left_lane_points[0]))
-        plt.plot(right_lane_points[0], right_line.vals(right_lane_points[0]))
-        plt.show()
+        if show_plot:
+            plt.figure()
+            plt.plot(left_lane_points[0], left_lane_points[1], 'b.')
+            plt.plot(right_lane_points[0], right_lane_points[1], 'r.')
+            plt.plot(left_lane_points[0], left_line.vals(left_lane_points[0]))
+            plt.plot(right_lane_points[0], right_line.vals(right_lane_points[0]))
+            plt.show()
 
         return left_line, right_line
 
