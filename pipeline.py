@@ -41,54 +41,68 @@ def valid(left_line, right_line):
         return False
     return True
 
-def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_left=None, last_right=None, show_all=False):
-    '''
-    Full processing pipeline for lane lines
 
-    img -- The input image, directly from the camera
-    undistorter -- An Undistorter processor object
-    lane_extractor -- A LaneExtractor processor object
-    transformer -- A GroundProjector processor object
-    lane_fitter -- A LaneFitter processor object
-    last_left -- (optional) A Line object representing the left lane line in the
-        previous frame of video
-    last_right -- (optional) A Line object representing the right lane line in
-        the previous frame of video
-    show_all -- If True, show all intermediate images in PyPlot figures
-        (default False)
+class Pipeline(object):
+    def __init__(self, undistorter, lane_extractor, transformer, lane_fitter, show_all=False):
+        '''
+        Full processing pipeline for lane lines
+        undistorter -- An Undistorter processor object
+        lane_extractor -- A LaneExtractor processor object
+        transformer -- A GroundProjector processor object
+        lane_fitter -- A LaneFitter processor object
+        last_left -- (optional) A Line object representing the left lane line in the
+            previous frame of video
+        last_right -- (optional) A Line object representing the right lane line in
+            the previous frame of video
+        show_all -- If True, show all intermediate images in PyPlot figures
+            (default False)
+        '''
+        self.undistorter = undistorter
+        self.lane_extractor = lane_extractor
+        self.transformer = transformer
+        self.lane_fitter = lane_fitter
+        self.show_all = show_all
+        self.last_left = None
+        self.last_right = None
 
-    Returns (composite_img, (left_lane, right_lane)
+    def __call__(self, img):
+        '''
+        Process a frame for lane lines
 
-    composite_img -- The input image, undistorted, with the lane drawn on it in
-        green
-    left_lane -- A Line object representing the left lane line
-    right_lane -- A Line object representing the right lane line
-    '''
-    try:
-        undistorted = undistorter.undistortImage(img)
-        lane_img = lane_extractor.extract_lanes(undistorted)
-        transformed_lane_img = transformer.transformImage(lane_img)
-        (left_lane, right_lane) = lane_fitter.fit_lanes(transformed_lane_img, last_left, last_right)
-        curvature_img = draw_lane(left_lane, right_lane, transformed_lane_img.shape, lane_fitter.resolution)
-        curvature_img_warped = transformer.inverseTransformImage(curvature_img, undistorted.shape)
-        # TODO: Validity check
-        composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
-        if show_all:
-            polyfit_img = plot_on_img(transformed_lane_img, left_lane, right_lane, color='yellow')
-            return (img,
-                    undistorted,
-                    lane_img,
-                    transformed_lane_img,
-                    (left_lane, right_lane),
-                    polyfit_img,
-                    curvature_img,
-                    curvature_img_warped,
-                    composite_img)
-        return composite_img, (left_lane, right_lane)
-    except Exception as e:
-        # TODO: This is a quick hack
-        print("Exception: {}".format(e))
-        return undistorted, (Line(), Line())
+        img -- The input image, directly from the camera
+        
+        Returns (composite_img, (left_lane, right_lane)
+
+        composite_img -- The input image, undistorted, with the lane drawn on it in
+            green
+        '''
+        try:
+            undistorted = self.undistorter.undistortImage(img)
+            lane_img = self.lane_extractor.extract_lanes(undistorted)
+            transformed_lane_img = self.transformer.transformImage(lane_img)
+            (self.left_lane, self.right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.last_left, self.last_right)
+            curvature_img = draw_lane(self.left_lane, self.right_lane, transformed_lane_img.shape, self.lane_fitter.resolution)
+            curvature_img_warped = self.transformer.inverseTransformImage(curvature_img, undistorted.shape)
+            # TODO: Validity check
+            composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
+            if self.show_all:
+                polyfit_img = plot_on_img(transformed_lane_img, self.left_lane, self.right_lane, color='yellow')
+                return (img,
+                        undistorted,
+                        lane_img,
+                        transformed_lane_img,
+                        (self.left_lane, self.right_lane),
+                        polyfit_img,
+                        curvature_img,
+                        curvature_img_warped,
+                        composite_img)
+            return composite_img
+        except Exception as e:
+            # TODO: This is a quick hack
+            print("Exception: {}".format(e))
+            return undistorted
+
+
 def main():
     parser = argparse.ArgumentParser(description='Process an image to find lane lines')
     parser.add_argument('--camera-matrix', type=str,
@@ -120,9 +134,10 @@ def main():
     lane_fitter = LaneFitter(args.resolution)
 
     input_ext = args.input_file[-3:]
+    process = Pipeline(undistorter, lane_extractor, transformer, lane_fitter)
     if input_ext in ['jpg', 'png']:
         input_img = mpimg.imread(args.input_file)
-        composite_img, (left_lane, right_lane) = process(input_img, undistorter, lane_extractor, transformer, lane_fitter)
+        composite_img = process(input_img)
         plt.figure()
         plt.imshow(composite_img)
         plt.show()
@@ -130,9 +145,8 @@ def main():
             print("Saving file to {}".format(args.output_file))
             mpimg.imsave(args.output_file, composite_img)
     elif input_ext in ['mp4']:
-        process_frame = lambda frame: process(frame, undistorter, lane_extractor, transformer, lane_fitter)[0]
         clip = VideoFileClip(args.input_file)
-        clip = clip.fl_image(process_frame)
+        clip = clip.fl_image(process)
         print("Writing video file to {}".format(args.output_file))
         clip.write_videofile(args.output_file, audio=False)
     else:

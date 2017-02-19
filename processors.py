@@ -178,11 +178,15 @@ class LaneFitter(object):
     A Processor that takes in a binary lane image in top-down perspective and
     finds the lane lines.
     '''
-    def __init__(self, resolution, search_box_size_margin=None):
+    def __init__(self, resolution, search_box_size_margin=None, max_range = 30.0):
         '''
         Constructor
 
         resolution -- Resolution of the input image in meters/pixel
+        search_box_size_margin -- Number of pixels on either side of the center
+            of the line to search for line pixels
+        max_range -- Maximum range from the bottom of the image to include
+            pixels (meters)
         '''
         self.resolution = resolution
         if search_box_size_margin is None:
@@ -191,6 +195,7 @@ class LaneFitter(object):
             self.search_box_size_margin = search_box_size_margin
         self.search_box_height = int(resolution/2)
         self.recenter_thresh = 1000
+        self.max_range = int(max_range * resolution)
 
     def close_img(self, img):
         '''
@@ -201,52 +206,47 @@ class LaneFitter(object):
         morph_kernel = np.ones((int(self.resolution/2), int(self.resolution/4)))
         return cv2.morphologyEx(img, cv2.MORPH_CLOSE, morph_kernel)
 
-    def find_lane(self, img, start_x, hint = None):
+    def find_lane_points(self, img):
         '''
-        Find the lane line that begins at the position `start_x` at the bottom
-        of the image and fit a quadratic polynomial to it. Uses the `hint` line
-        to mask off likely pixels. If no hint` is given, performs a search using
-        `find_lane_points`.
-
-        img -- Binary lane image in top-down perspective to search
-        start_x -- The rough position of the lane line's beginning at the bottom
-            of the image
-        hint -- A lane line to use as a hint to avoid having to do a sliding
-            window search, i.e. a detection in a previous frame (optional)
-        '''
-        lane_indexes = self.find_lane_points(img, start_x, hint)
-        line = Line()
-        line.closest_y = img.shape[0]
-        line.setFit(np.polyfit(lane_indexes[0], lane_indexes[1], 2))
-        return line
-
-    def find_lane_points(self, img, start_x):
-        '''
-        Find a single lane using a sliding filter. Initialize the
-        sliding filter at the bottom of the image using start_x.
-
+        Find both lane line points using a histogram peaks and sliding filter.
+        
         img -- Image to search in
-        start_x -- X coordinate to start the search
         '''
+        height = img.shape[0]
+        smoothed_histogram = self.smoothed_histogram(img[int(height/2):,:])
+        sorted_peaks = self.find_peaks(smoothed_histogram)
+        line1 = sorted_peaks[0]
+        for line2 in sorted_peaks[1:]:
+            # Ensure that the second line is at least 2 meters away from the first one
+            if abs(line2 - line1)/float(self.resolution) > 2.0:
+                break
+        if line1 < line2:
+            left_start = line1
+            right_start = line2
+        else:
+            left_start = line2
+            right_start = line1
+        left_indexes = list()
+        right_indexes = list()
         margin = int(self.search_box_size_margin)
         height = int(self.search_box_height)
-        x_center = int(start_x)
-        lane_indexes = list()
-        for start_y in range(img.shape[0]-height, 0, -height):
-            end_y = start_y + height
-            start_x = max(0, x_center - margin)
-            end_x = min(x_center + margin, img.shape[1])
-            roi = img[start_y:end_y, start_x:end_x]
-            points = roi.nonzero()
-            # Add the offsets back to the points
-            points = (points[0] + start_y, points[1] + start_x)
-            count = len(points[0])
-            if count > self.recenter_thresh:
-                # Recenter the search box on the x-centroid of the lane
-                x_center = int(np.mean(points[1]))
-            lane_indexes.append(points)
-        lane_indexes = np.concatenate(lane_indexes, 1)
-        return lane_indexes
+        for start_x, lane_indexes in (left_start, left_indexes), (right_start, right_indexes):
+            x_center = int(start_x)
+            min_y = img.shape[0] - self.max_range
+            for start_y in range(img.shape[0]-height, min_y, -height):
+                end_y = start_y + height
+                start_x = max(0, x_center - margin)
+                end_x = min(x_center + margin, img.shape[1])
+                roi = img[start_y:end_y, start_x:end_x]
+                points = roi.nonzero()
+                # Add the offsets back to the points
+                points = (points[0] + start_y, points[1] + start_x)
+                count = len(points[0])
+                if count > self.recenter_thresh:
+                    # Recenter the search box on the x-centroid of the lane
+                    x_center = int(np.mean(points[1]))
+                lane_indexes.append(points)
+        return np.concatenate(left_indexes, 1), np.concatenate(right_indexes, 1)
 
     def find_peaks(self, data, order=None):
         '''
@@ -314,23 +314,24 @@ class LaneFitter(object):
         last_right -- Previous detection of the right lane line to use as a hint
             (optional)
         '''
-        height = img.shape[0]
-        width = img.shape[1]
         closed_img = self.close_img(img)
-        smoothed_histogram = self.smoothed_histogram(closed_img[int(height/2):,:])
-        sorted_peaks = self.find_peaks(smoothed_histogram)
-        line1 = sorted_peaks[0]
-        for line2 in sorted_peaks[1:]:
-            # Ensure that the second line is at least 2 meters away from the first one
-            if abs(line2 - line1)/float(self.resolution) > 2.0:
-                break
-        if line1 < line2:
-            left_start = line1
-            right_start = line2
+        if last_left is None or last_right is None:
+            left_lane_points, right_lane_points = self.find_lane_points(closed_img)
         else:
-            left_start = line2
-            right_start = line1
-        left_lane_points = self.find_lane_points(img, left_start)
-        right_lane_points = self.find_lane_points(img, right_start)
+            all_points = img.nonzero()
+            # min_y is used to filter out furthest points
+            min_y = img.shape[0] - self.max_range
+            left_lane_points = numpy.empty_like(all_points)
+            right_lane_points = numpy.empty_like(all_points)
+            for x, y in all_points.T:
+                if y < min_y:
+                    continue
+                left_y = last_left.val(x)
+                if abs(left_y - y) < self.search_box_size_margin:
+                    np.append(left_lane_points, [x, y], axis=0)
+                right_y = last_right.val(x)
+                if abs(right_y - y) < self.search_box_size_margin:
+                    np.append(right_lane_points, [x, y], axis=0)
+        
         left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points)
         return left_lane, right_lane
