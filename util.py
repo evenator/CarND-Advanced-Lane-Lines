@@ -59,15 +59,14 @@ def draw_lane(left_line, right_line, img_shape, resolution):
     cv2.fillPoly(canvas, np.int_([pts]), (0,255, 0))
     return canvas
 
-def plot_on_img(img, *poly, color='b'):
+def plot_on_img(img, *lines, color='b'):
     '''
-    Plot an arbitrary number of arbitrary polynomials on an image. Note that
+    Plot an arbitrary number of arbitrary Lines on an image. Note that
     the independent variable is **y**, not x, and that image coordinate
     conventions apply
 
     img -- Image to plot on top of
-    poly -- Any number of polynomials in pixel space, expressed as numpy-style
-        coefficient vectors
+    lines -- Any number of Line types
     color -- Matplotlib color (default 'b') to plot the polynomials in
 
     Returns a 3-channel numpy image
@@ -78,8 +77,8 @@ def plot_on_img(img, *poly, color='b'):
         plt.imshow(img, cmap='gray')
     else:
         plt.imshow(img)
-    for poly in poly:
-        plotx = np.polyval(poly, ploty)
+    for line in lines:
+        plotx = line.vals(poly, ploty)
         plt.plot(plotx, ploty, color=color)
     fig.canvas.draw()
     out_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')

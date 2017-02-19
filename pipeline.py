@@ -74,7 +74,7 @@ def process(img, undistorter, lane_extractor, transformer, lane_fitter, last_lef
         # TODO: Validity check
         composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
         if show_all:
-            polyfit_img = plot_on_img(transformed_lane_img, left_lane.poly, right_lane.poly, color='yellow')
+            polyfit_img = plot_on_img(transformed_lane_img, left_lane, right_lane, color='yellow')
             return (img,
                     undistorted,
                     lane_img,

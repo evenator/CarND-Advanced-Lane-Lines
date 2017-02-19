@@ -30,3 +30,8 @@ class Line(object):
         Calculate x values (pixels) for the given series of y_vals (pixels)
         '''
         return np.polyval(self.poly, y_vals)
+    def setFit(self, coefficients):
+        '''
+        Set the current fit to a list of polynomial coefficients
+        '''
+        self.poly = coefficients

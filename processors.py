@@ -217,7 +217,7 @@ class LaneFitter(object):
         lane_indexes = self.find_lane_points(img, start_x, hint)
         line = Line()
         line.closest_y = img.shape[0]
-        line.poly = np.polyfit(lane_indexes[0], lane_indexes[1], 2)
+        line.setFit(np.polyfit(lane_indexes[0], lane_indexes[1], 2))
         return line
 
     def find_lane_points(self, img, start_x):
@@ -291,8 +291,8 @@ class LaneFitter(object):
         p = solve_least_squares(y, x)[0]
         left_line = Line()
         right_line = Line()
-        left_line.poly = np.array([p[0], p[1], p[2]])
-        right_line.poly = np.array([p[0], p[1], p[3]])
+        left_line.setFit(np.array([p[0], p[1], p[2]]))
+        right_line.setFit(np.array([p[0], p[1], p[3]]))
 
         if show_plot:
             plt.figure()
