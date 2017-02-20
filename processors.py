@@ -59,6 +59,18 @@ class GroundProjector(object):
             output_size = (src.shape[0], src.shape[1])
         return cv2.warpPerspective(src, self._P, output_size)
 
+    def transformPoint(self, src):
+        '''
+        Transform a point from camera perspective to top-down view
+
+        src -- Point to transform, as a numpy Array-like
+        '''
+        src = np.array(src)
+        while len(src.shape) < 3:
+            src = np.array([src])
+        dst = cv2.perspectiveTransform(src, self._P)
+        return dst
+
     def inverseTransformImage(self, src, output_shape):
         '''
         Transform an image from top-down view to camera perspective
@@ -209,7 +221,7 @@ class LaneFitter(object):
     def find_lane_points(self, img):
         '''
         Find both lane line points using a histogram peaks and sliding filter.
-        
+
         img -- Image to search in
         '''
         height = img.shape[0]
@@ -332,6 +344,6 @@ class LaneFitter(object):
                 right_y = last_right.val(x)
                 if abs(right_y - y) < self.search_box_size_margin:
                     np.append(right_lane_points, [x, y], axis=0)
-        
+
         left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points)
         return left_lane, right_lane

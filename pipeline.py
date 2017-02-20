@@ -70,7 +70,7 @@ class Pipeline(object):
         Process a frame for lane lines
 
         img -- The input image, directly from the camera
-        
+
         Returns (composite_img, (left_lane, right_lane)
 
         composite_img -- The input image, undistorted, with the lane drawn on it in
@@ -81,6 +81,9 @@ class Pipeline(object):
             lane_img = self.lane_extractor.extract_lanes(undistorted)
             transformed_lane_img = self.transformer.transformImage(lane_img)
             (self.left_lane, self.right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.last_left, self.last_right)
+            for line in self.left_lane, self.right_lane:
+                line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2, undistorted.shape[0]])[0][0][0]
+                line.closest_y = transformed_lane_img.shape[0]
             curvature_img = draw_lane(self.left_lane, self.right_lane, transformed_lane_img.shape, self.lane_fitter.resolution)
             curvature_img_warped = self.transformer.inverseTransformImage(curvature_img, undistorted.shape)
             # TODO: Validity check
@@ -96,6 +99,14 @@ class Pipeline(object):
                         curvature_img,
                         curvature_img_warped,
                         composite_img)
+            veh_position = (self.right_lane.dist_from_center_m() + self.left_lane.dist_from_center_m())/2
+            curvature = self.left_lane.curvature()
+            info = "Position:  {:.3f} m".format(veh_position)
+            text_position = (10, 50)
+            composite_img = cv2.putText(composite_img, info, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+            text_position = (10, 90)
+            info = "Curvature: {:.6f} 1/m".format(curvature)
+            composite_img = cv2.putText(composite_img, info, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
             return composite_img
         except Exception as e:
             # TODO: This is a quick hack
