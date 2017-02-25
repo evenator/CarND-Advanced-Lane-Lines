@@ -78,7 +78,7 @@ class Pipeline(object):
         '''
         try:
             undistorted = self.undistorter.undistortImage(img)
-            lane_img = self.lane_extractor.extract_lanes(undistorted)
+            lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots = self.show_all)
             transformed_lane_img = self.transformer.transformImage(lane_img)
             (self.left_lane, self.right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.last_left, self.last_right)
             for line in self.left_lane, self.right_lane:
@@ -88,17 +88,6 @@ class Pipeline(object):
             curvature_img_warped = self.transformer.inverseTransformImage(curvature_img, undistorted.shape)
             # TODO: Validity check
             composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
-            if self.show_all:
-                polyfit_img = plot_on_img(transformed_lane_img, self.left_lane, self.right_lane, color='yellow')
-                return (img,
-                        undistorted,
-                        lane_img,
-                        transformed_lane_img,
-                        (self.left_lane, self.right_lane),
-                        polyfit_img,
-                        curvature_img,
-                        curvature_img_warped,
-                        composite_img)
             veh_position = (self.right_lane.dist_from_center_m() + self.left_lane.dist_from_center_m())/2
             curvature = self.left_lane.curvature()
             info = "Position:  {:.3f} m".format(veh_position)
@@ -125,6 +114,8 @@ def main():
     parser.add_argument('--resolution', type=int,
                         help='Resolution (px/meter) for top-down images',
                         default=200)
+    parser.add_argument('--show-all', action='store_true',
+                        help='Show all intermediate images')
     parser.add_argument('input_file', type=str,
                         help='File path of the image/video to process')
     parser.add_argument('output_file', type=str,
@@ -141,11 +132,11 @@ def main():
     ground_img_shape = (1540, 9200) # pixels = (7.7, 46) meters
     transformer = GroundProjector(P, ground_img_shape)
     # TODO: Tune lane extractor
-    lane_extractor = LaneExtractor(25, (0, pi/3), (30, 100))
+    lane_extractor = LaneExtractor(0.9)
     lane_fitter = LaneFitter(args.resolution)
 
     input_ext = args.input_file[-3:]
-    process = Pipeline(undistorter, lane_extractor, transformer, lane_fitter)
+    process = Pipeline(undistorter, lane_extractor, transformer, lane_fitter, args.show_all)
     if input_ext in ['jpg', 'png']:
         input_img = mpimg.imread(args.input_file)
         composite_img = process(input_img)

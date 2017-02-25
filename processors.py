@@ -129,20 +129,14 @@ class LaneExtractor(object):
     Processor to take in a color (RGB) image in camera perspective and return
     a binary image in camera perspective that contains mostly lane lines
     '''
-    def __init__(self, sobel_kernel_size, direction_thresh, gradient_mag_thresh):
+    def __init__(self, ys_thresh):
         '''
         Constructor
 
-        sobel_kernel_size -- Size of kernel for gradient calculate (odd number
-            of pixels)
-        direction_thresh -- (min, max) tuple of thresholds for the direction
-            angle of the gradient. Angles are in the range [0, pi/2]
-        gradient_mag_thresh -- (min, max) tuple of thresholds for the magnitude
-            of the gradient
+        ys_thresh -- Threshold for lines in the Y+S image, which is scaled to
+            [0.0, 1.0]. Recommended value: 0.9
         '''
-        self._k = sobel_kernel_size
-        self._direction_thresh = direction_thresh
-        self._gradient_mag_thresh = gradient_mag_thresh
+        self._ys_thresh = ys_thresh
 
     def extract_lanes(self, img, show_plots=False):
         '''
@@ -154,33 +148,27 @@ class LaneExtractor(object):
         Returns a binary image in the camera perspective
         '''
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-        s_channel = hls[:,:,2]
-        sobel_x = XSobel(s_channel, ksize=self._k)
-        sobel_y = YSobel(s_channel, ksize=self._k)
+        yuv = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+        y = yuv[:,:,0]
+        y = y / np.max(y)
+        s = hls[:,:,2]
+        s = s / np.max(s)
+        ys = y + s
+        ys_uint8 = (ys / np.max(ys) * 255).astype(np.uint8)
+        ys_norm = cv2.equalizeHist(ys_uint8).astype(np.float32) / 255
+        binary = np.uint8(ys_norm > self._ys_thresh)
         if show_plots:
-            plt.figure()
-            plt.title('X-Gradient')
-            plt.imshow(sobel_x, cmap='gray')
-            plt.figure()
-            plt.title('Y-Gradient')
-            plt.imshow(sobel_y, cmap='gray')
-        dxy = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
-        magnitude_scaled = scaled_abs(dxy)
-        magnitude_binary = np.logical_and(magnitude_scaled >= self._gradient_mag_thresh[0],
-                                          magnitude_scaled <= self._gradient_mag_thresh[1])
-        if show_plots:
-            plt.figure()
-            plt.title('Magnitude Binary')
-            plt.imshow(magnitude_binary, cmap='gray')
-        direction = np.arctan2(np.abs(sobel_y), np.abs(sobel_x))
-        direction_binary = np.logical_and(direction >= self._direction_thresh[0],
-                                          direction <= self._direction_thresh[1])
-        if show_plots:
-            plt.figure()
-            plt.title('Direction Binary')
-            plt.imshow(direction_binary, cmap='gray')
-        lanes = np.dstack([magnitude_binary, direction_binary]).all(-1)
-        return np.uint8(lanes)
+            f, (a1, a2, a3, a4) = plt.subplots(1, 4)
+            f.suptitle('Lane Extraction')
+            a1.imshow(y, cmap='gray')
+            a1.set_title('Y')
+            a2.imshow(s, cmap='gray')
+            a2.set_title('S')
+            a3.imshow(ys, cmap='gray')
+            a3.set_title('Y+S')
+            a4.imshow(binary, cmap='gray')
+            a4.set_title('Binary')
+        return binary
 
 # TODO: Restructure this class and start using hints
 # TODO: Rename private methods
