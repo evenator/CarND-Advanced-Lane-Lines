@@ -1,4 +1,4 @@
-from datatypes import Line
+from datatypes import FilteredLine as Line
 
 import cv2
 import matplotlib.pyplot as plt
@@ -275,7 +275,12 @@ class LaneFitter(object):
         smoothed_histogram = np.convolve(histogram, w, 'same')
         return smoothed_histogram
 
-    def find_two_lanes(self, left_lane_points, right_lane_points, show_plot=False):
+    def find_two_lanes(self,
+                       left_lane_points,
+                       right_lane_points,
+                       left_line,
+                       right_line,
+                       show_plot=False):
         '''
         Perform a joint polynomial fit that constrains the two lane lines
         to be parallel.
@@ -289,8 +294,10 @@ class LaneFitter(object):
         y = np.concatenate((np.stack((left_lane_points[0]**2, left_lane_points[0], np.ones(n_left_points), np.zeros(n_left_points)), axis=1),
                             np.stack((right_lane_points[0]**2, right_lane_points[0], np.zeros(n_right_points), np.ones(n_right_points)), axis=1)))
         p = solve_least_squares(y, x)[0]
-        left_line = Line()
-        right_line = Line()
+        if left_line is None:
+            left_line = Line()
+        if right_line is None:
+            right_line = Line()
         left_line.setFit(np.array([p[0], p[1], p[2]]))
         right_line.setFit(np.array([p[0], p[1], p[3]]))
 
@@ -304,7 +311,7 @@ class LaneFitter(object):
 
         return left_line, right_line
 
-    def fit_lanes(self, img, last_left = None, last_right = None):
+    def fit_lanes(self, img, last_left = None, last_right = None, show_plots = False):
         '''
         Find both lanes in the top-down binary lane image.
 
@@ -318,20 +325,17 @@ class LaneFitter(object):
         if last_left is None or last_right is None:
             left_lane_points, right_lane_points = self.find_lane_points(closed_img)
         else:
-            all_points = img.nonzero()
+            y, x = img.nonzero()
             # min_y is used to filter out furthest points
             min_y = img.shape[0] - self.max_range
-            left_lane_points = numpy.empty_like(all_points)
-            right_lane_points = numpy.empty_like(all_points)
-            for x, y in all_points.T:
-                if y < min_y:
-                    continue
-                left_y = last_left.val(x)
-                if abs(left_y - y) < self.search_box_size_margin:
-                    np.append(left_lane_points, [x, y], axis=0)
-                right_y = last_right.val(x)
-                if abs(right_y - y) < self.search_box_size_margin:
-                    np.append(right_lane_points, [x, y], axis=0)
-
-        left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points)
+            keep_y = y > min_y
+            left_x_pred = last_left.vals(y)
+            right_x_pred = last_right.vals(y)
+            dx_left = np.abs(left_x_pred - x)
+            dx_right = np.abs(right_x_pred - x)
+            keep_left = (dx_left < self.search_box_size_margin) & keep_y
+            keep_right = (dx_right < self.search_box_size_margin) & keep_y
+            left_lane_points = (y[keep_left], x[keep_left])
+            right_lane_points = (y[keep_right], x[keep_right])
+        left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points, last_left, last_right, show_plots)
         return left_lane, right_lane

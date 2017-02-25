@@ -1,5 +1,16 @@
 import numpy as np
 
+class ExponentialFilter(object):
+    '''
+    Exponential smoothing filter
+    '''
+    def __init__(self, alpha, init = 0.0):
+        self._alpha = alpha
+        self.s = init
+    def __call__(self, x):
+        self.s = self._alpha * x + (1 - self._alpha) * self.s
+        return self.s
+
 class Line(object):
     '''
     An object to represent a detected lane line
@@ -9,6 +20,7 @@ class Line(object):
         self.closest_y = 0     # Pixel y-coordinate closest to vehicle (img bottom)
         self.middle_x = 0      # Pixel x-coordinate clostest to vehicle (img center)
         self.resolution = 200  # Image pixels/meter
+        self.age = 0           # Number of frames since last matched
     def radius(self):
         """ Return the radius of curvature in meters"""
         A = self.poly[0]
@@ -30,7 +42,7 @@ class Line(object):
             (0 is closest to the vehicle)
         '''
         y_vals = np.array(y_vals)
-        y_vals = (np.ones_likes(y_vals) * self.closest_y - y_vals) * self.resolution
+        y_vals = (np.ones_like(y_vals) * self.closest_y - y_vals) * self.resolution
         return self.vals(y_vals) / self.resolution
     def vals(self, y_vals):
         '''
@@ -42,3 +54,13 @@ class Line(object):
         Set the current fit to a list of polynomial coefficients
         '''
         self.poly = coefficients
+
+class FilteredLine(Line):
+    '''
+    An object to represent a detected lane line, with filtering on the
+    polynomial fit.
+    '''
+    def setFit(self, coefficients):
+        if not hasattr(self, 'filters'):
+            self.filters = [ExponentialFilter(alpha = 0.2, init=x) for x in coefficients]
+        self.poly = [f(x) for x, f in zip(coefficients, self.filters)]

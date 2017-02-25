@@ -17,13 +17,13 @@ def valid(left_line, right_line):
     detection
     '''
     # Check that both lines detected
-    if not left_line.detected or not right_line.detected:
+    if left_line is None or right_line is None:
         print("Both lines not detected")
         return False
-    # Check curvature similarity
-    width = abs(left.radius() - right.radius())
-    if width < 2.0 or width > 5.0:
-        print("Radii not similar (width={})".format(width))
+    # Check vehicle is in lane
+    veh_pos = (right_line.dist_from_center_m() + left_line.dist_from_center_m())/2
+    if abs(veh_pos) > 1.0:
+        print("Vehicle is not in the center of the lane (position={})".format(veh_pos))
         return False
     # Check lines parallel
     # by checking the variance of the widths at many points
@@ -35,7 +35,7 @@ def valid(left_line, right_line):
         return False
     # Check curvature is sane
     # See http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm
-    mean_curvature = (2 * left.curvature() * right.curvature()) / (left.curvature() + right.curvature())
+    mean_curvature = 2.0/(left_line.radius() + right_line.radius())
     if mean_curvature > 0.005679: # Curvature in 1/m for radius = 587 ft
         print("Curvature is too large (curvature={})".format(mean_curvature))
         return False
@@ -62,8 +62,9 @@ class Pipeline(object):
         self.transformer = transformer
         self.lane_fitter = lane_fitter
         self.show_all = show_all
-        self.last_left = None
-        self.last_right = None
+        self.left_lane = None
+        self.right_lane = None
+        self.max_age = 5
 
     def __call__(self, img):
         '''
@@ -71,7 +72,7 @@ class Pipeline(object):
 
         img -- The input image, directly from the camera
 
-        Returns (composite_img, (left_lane, right_lane)
+        Returns composite_img
 
         composite_img -- The input image, undistorted, with the lane drawn on it in
             green
@@ -80,13 +81,20 @@ class Pipeline(object):
             undistorted = self.undistorter.undistortImage(img)
             lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots = self.show_all)
             transformed_lane_img = self.transformer.transformImage(lane_img)
-            (self.left_lane, self.right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.last_left, self.last_right)
-            for line in self.left_lane, self.right_lane:
+            (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.left_lane, self.right_lane)
+            for line in left_lane, right_lane:
                 line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2, undistorted.shape[0]])[0][0][0]
                 line.closest_y = transformed_lane_img.shape[0]
+            if valid(left_lane, right_lane):
+                self.left_lane = left_lane
+                self.right_lane = right_lane
+            else:
+                if self.left_lane is None:
+                    self.left_lane = left_lane
+                if self.right_lane is None:
+                    self.right_lane = right_lane
             curvature_img = draw_lane(self.left_lane, self.right_lane, transformed_lane_img.shape, self.lane_fitter.resolution)
             curvature_img_warped = self.transformer.inverseTransformImage(curvature_img, undistorted.shape)
-            # TODO: Validity check
             composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
             veh_position = (self.right_lane.dist_from_center_m() + self.left_lane.dist_from_center_m())/2
             curvature = self.left_lane.curvature()
@@ -116,6 +124,8 @@ def main():
                         default=200)
     parser.add_argument('--show-all', action='store_true',
                         help='Show all intermediate images')
+    parser.add_argument('--subclip', type=float, nargs=2, required=False,
+                        help='Beginning and end times of video')
     parser.add_argument('input_file', type=str,
                         help='File path of the image/video to process')
     parser.add_argument('output_file', type=str,
@@ -140,14 +150,18 @@ def main():
     if input_ext in ['jpg', 'png']:
         input_img = mpimg.imread(args.input_file)
         composite_img = process(input_img)
-        plt.figure()
-        plt.imshow(composite_img)
-        plt.show()
         if args.output_file:
             print("Saving file to {}".format(args.output_file))
-            mpimg.imsave(args.output_file, composite_img)
+            composite_img = cv2.cvtColor(composite_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(args.output_file, composite_img)
+        else:
+            plt.figure()
+            plt.imshow(composite_img)
+            plt.show()
     elif input_ext in ['mp4']:
         clip = VideoFileClip(args.input_file)
+        if args.subclip and len(args.subclip) == 2:
+            clip = clip.subclip(args.subclip[0], args.subclip[1])
         clip = clip.fl_image(process)
         print("Writing video file to {}".format(args.output_file))
         clip.write_videofile(args.output_file, audio=False)
