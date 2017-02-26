@@ -9,8 +9,6 @@ from moviepy.editor import VideoFileClip
 import numpy as np
 import pickle
 
-# TODO: Figure out why not working on test6.jpg
-# TODO: Filtering, hints
 
 def valid(left_line, right_line):
     '''
@@ -115,7 +113,6 @@ class Pipeline(object):
             composite_img = cv2.putText(composite_img, info, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
             return composite_img
         except Exception as e:
-            # TODO: This is a quick hack
             print("Exception: {}".format(e))
             return undistorted
 

@@ -174,9 +174,6 @@ class LaneExtractor(object):
             a4.set_title('Binary')
         return binary
 
-# TODO: Restructure this class and start using hints
-# TODO: Rename private methods
-# TODO: Add option to plot intermedia images
 class LaneFitter(object):
     '''
     A Processor that takes in a binary lane image in top-down perspective and
