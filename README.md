@@ -139,7 +139,7 @@ fit in green.
 Vehicle Position and Lane Curvature
 -----------------------------------
 
-![Final Composite Image](output_images/test_image6.jpg)
+![Final Composite Image](output_images/test6.jpg)
 
 This image shows the final output of the processing pipeline. It shows the
 input image, undistorted, with the estimated lane drawn in green, the curvature
