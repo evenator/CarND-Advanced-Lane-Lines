@@ -90,7 +90,7 @@ class Pipeline(object):
                 plt.figure()
                 plt.title('Top-down Binary Lane Image')
                 plt.imshow(transformed_lane_img, cmap='gray')
-            (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.left_lane, self.right_lane)
+            (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.left_lane, self.right_lane, show_plots=self.show_all)
             for line in left_lane, right_lane:
                 line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2, undistorted.shape[0]])[0][0][0]
                 line.closest_y = transformed_lane_img.shape[0]

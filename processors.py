@@ -307,11 +307,10 @@ class LaneFitter(object):
 
         if show_plot:
             plt.figure()
-            plt.plot(left_lane_points[0], left_lane_points[1], 'b.')
-            plt.plot(right_lane_points[0], right_lane_points[1], 'r.')
-            plt.plot(left_lane_points[0], left_line.vals(left_lane_points[0]))
-            plt.plot(right_lane_points[0], right_line.vals(right_lane_points[0]))
-            plt.show()
+            plt.plot(left_lane_points[0], left_lane_points[1], 'r.')
+            plt.plot(right_lane_points[0], right_lane_points[1], 'b.')
+            plt.plot(left_lane_points[0], left_line.vals(left_lane_points[0]), 'r')
+            plt.plot(right_lane_points[0], right_line.vals(right_lane_points[0]), 'b')
 
         return left_line, right_line
 
@@ -326,12 +325,12 @@ class LaneFitter(object):
             (optional)
         '''
         closed_img = self.close_img(img)
+        # min_y is used to filter out furthest points
+        min_y = img.shape[0] - self.max_range
         if last_left is None or last_right is None:
             left_lane_points, right_lane_points = self.find_lane_points(closed_img)
         else:
             y, x = img.nonzero()
-            # min_y is used to filter out furthest points
-            min_y = img.shape[0] - self.max_range
             keep_y = y > min_y
             left_x_pred = last_left.vals(y)
             right_x_pred = last_right.vals(y)
@@ -342,4 +341,15 @@ class LaneFitter(object):
             left_lane_points = (y[keep_left], x[keep_left])
             right_lane_points = (y[keep_right], x[keep_right])
         left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points, last_left, last_right, show_plots)
+        if show_plots:
+            plot_img = np.copy(closed_img)
+            plot_img = cv2.cvtColor(plot_img*255, cv2.COLOR_GRAY2RGB)
+            for pt in zip(left_lane_points[0], left_lane_points[1]):
+                plot_img[pt] = (255, 0, 0)
+            for pt in zip(right_lane_points[0], right_lane_points[1]):
+                plot_img[pt] = (0, 0, 255)
+            plt.figure()
+            plt.imshow(plot_img)
+            plt.plot(left_lane.vals(left_lane_points[0]), left_lane_points[0], 'g')
+            plt.plot(right_lane.vals(right_lane_points[0]), right_lane_points[0], 'g')
         return left_lane, right_lane
