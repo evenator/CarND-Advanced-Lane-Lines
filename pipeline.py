@@ -82,6 +82,10 @@ class Pipeline(object):
             undistorted = self.undistorter.undistortImage(img)
             lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots = self.show_all)
             transformed_lane_img = self.transformer.transformImage(lane_img)
+            if self.show_all:
+                plt.figure()
+                plt.title('Top-down Binary Lane Image')
+                plt.imshow(transformed_lane_img, cmap='gray')
             (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.left_lane, self.right_lane)
             for line in left_lane, right_lane:
                 line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2, undistorted.shape[0]])[0][0][0]
