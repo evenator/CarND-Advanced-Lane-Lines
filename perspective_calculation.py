@@ -43,7 +43,7 @@ P = cv2.getPerspectiveTransform(img_pts, obj_pts)
 output_shape = (int(px_m * (offset * 2 + lane_width)),
                 int(px_m * (top_offset + bottom_offset + line_length)))
 # Create a projector object
-projector = GroundProjector(P, output_shape)
+projector = GroundProjector(P, px_m, output_shape)
 
 # Print results
 print("Projection matrix:")

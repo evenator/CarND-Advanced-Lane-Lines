@@ -30,18 +30,22 @@ class GroundProjector(object):
     Processor for transforming images from camera perspective to top-down view
     and vice-versa, using perspective transform.
     '''
-    def __init__(self, P, output_size=None):
+    def __init__(self, P, resolution, output_size):
         '''
         Create a GroundProjector from a Perspective matrix
 
         P -- Perspective transform matrix, as created by
             cv2.getPerspectiveTransform
         output_size -- Default shape of the output image **in pixels** as a
-            tuple (width, height). If set to None, there is no default output
-            shape.
+            tuple (width, height).
+        resolution -- Resolution in pixels per meter.
         '''
         self._P = P
         self._output_size = output_size
+        self._resolution = resolution
+
+    def getResolution(self):
+        return self._resolution
 
     def transformImage(self, src, output_size=None):
         '''

@@ -7,6 +7,7 @@ from math import pi
 import matplotlib.image as mpimg
 from moviepy.editor import VideoFileClip
 import numpy as np
+import pickle
 
 # TODO: Figure out why not working on test6.jpg
 # TODO: Filtering, hints
@@ -119,9 +120,9 @@ def main():
     parser.add_argument('--distortion-coefficients', type=str,
                         help='File path of camera distortion coefficients, stored as .npy',
                         default='disortion_coefficients.npy')
-    parser.add_argument('--resolution', type=int,
-                        help='Resolution (px/meter) for top-down images',
-                        default=200)
+    parser.add_argument('--projector', type=str,
+                        help='Pickled projector to use',
+                        default='projector.p')
     parser.add_argument('--show-all', action='store_true',
                         help='Show all intermediate images')
     parser.add_argument('--subclip', type=float, nargs=2, required=False,
@@ -131,22 +132,27 @@ def main():
     parser.add_argument('output_file', type=str,
                         help="File path to store the output", nargs='?')
     args = parser.parse_args()
+
+    # Load the undistorter from files
     K = np.load(args.camera_matrix)
     D = np.load(args.distortion_coefficients)
     undistorter = Undistorter(K, D)
-    # TODO: Document these numbers
-    P = np.array([[ -6.16890178e-01,  -1.79811526e+00,   1.14922653e+03],
-                  [ -3.80945275e-15,  -2.53733237e+01,   1.15182167e+04],
-                  [ -6.27651414e-19,  -2.38310982e-03,   1.00000000e+00]])
-    # TODO: Make ground image shape configurable
-    ground_img_shape = (1540, 9200) # pixels = (7.7, 46) meters
-    transformer = GroundProjector(P, ground_img_shape)
-    # TODO: Tune lane extractor
-    lane_extractor = LaneExtractor(0.9)
-    lane_fitter = LaneFitter(args.resolution)
 
-    input_ext = args.input_file[-3:]
+    # Load the projector/transformer from file
+    with open(args.projector, 'rb') as f:
+        transformer = pickle.load(f)
+
+    # Set up the binary lane extractor
+    lane_extractor = LaneExtractor(0.9)
+    
+    # Set up the lane fitter
+    lane_fitter = LaneFitter(transformer.getResolution())
+
+    # Create the processing pipeline
     process = Pipeline(undistorter, lane_extractor, transformer, lane_fitter, args.show_all)
+
+    # Load and process the file
+    input_ext = args.input_file[-3:]
     if input_ext in ['jpg', 'png']:
         input_img = mpimg.imread(args.input_file)
         composite_img = process(input_img)
