@@ -80,6 +80,10 @@ class Pipeline(object):
         '''
         try:
             undistorted = self.undistorter.undistortImage(img)
+            if self.show_all:
+                plt.figure()
+                plt.title('Undistorted')
+                plt.imshow(img)
             lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots = self.show_all)
             transformed_lane_img = self.transformer.transformImage(lane_img)
             if self.show_all:
