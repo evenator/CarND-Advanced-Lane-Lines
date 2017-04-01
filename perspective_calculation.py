@@ -13,21 +13,21 @@ Script to generate the perspective projector and save it to a Python pickle.
 
 # These points were chosen by hand to be a rectangle with points on
 # lane markers, which should be 120 feet apart.
-img_pts = np.float32([(590, 456),  # Far left
-                      (464, 548),  # Near left
-                      (831, 548),  # Near right
-                      (694, 456)]) # Far right
+img_pts = np.float32([(590, 456),   # Far left
+                      (464, 548),   # Near left
+                      (831, 548),   # Near right
+                      (694, 456)])  # Far right
 # How much to include on either side of the lane
-offset = 2.0 # meters
+offset = 2.0  # meters
 # How much to include past the end of the chosen lane marker
 top_offset = 3.0
 # How much to include before the beginning of the chosen lane marker.
 # This should be about at the edge of the hood of the car
 bottom_offset = 7.0
 # Width of the lane
-lane_width = 3.7 # meters
+lane_width = 3.7  # meters
 # Length of 3 lane markers
-line_length = 3 * 40.0*0.30 # Feet to meters
+line_length = 3 * 40.0*0.30  # Feet to meters
 # Pixels per meeter (0.5 cm resolution)
 px_m = 200.0
 # Calculate the points' positions on the ground in meters
