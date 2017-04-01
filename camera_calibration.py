@@ -8,9 +8,11 @@ import numpy as np
 import os
 import sys
 
+
 def Grayscale(img):
     '''Convert an image to Grayscale'''
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
 
 def cornersImg(img, board_size, corners):
     '''
@@ -54,15 +56,26 @@ def calibrateFromImgs(imgs, board_size, show_chessboards=False):
                 plt.title(name)
     if show_chessboards:
         plt.show()
-    ret, K, D, rvecs, tvecs = cv2.calibrateCamera(np.array(obj_pts), np.array(img_pts), img.shape, None, None)
+    ret, K, D, rvecs, tvecs = cv2.calibrateCamera(np.array(obj_pts),
+                                                  np.array(img_pts),
+                                                  img.shape,
+                                                  None,
+                                                  None)
     return K, D
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Calculate and save the camera matrix and distortion coefficients from a directory of chessboard images')
-    parser.add_argument('--board-size', nargs=2, type=int, default=(9, 6), help='Two-tuple containing the width and height of the chessboard (number of corners)')
-    parser.add_argument('--show-chessboards', action='store_true', help='Display chessboards with corners found')
-    parser.add_argument('--show-undistorted', action='store_true', help='Show images after distortion-correction to verify calibration')
+    parser = argparse.ArgumentParser(description='Calculate and save the '
+            'camera matrix and distortion coefficients from a directory of '
+            'chessboard images')
+    parser.add_argument('--board-size', nargs=2, type=int, default=(9, 6),
+                        help='Two-tuple containing the width and height of the '
+                             'chessboard (number of corners)')
+    parser.add_argument('--show-chessboards', action='store_true',
+                        help='Display chessboards with corners found')
+    parser.add_argument('--show-undistorted', action='store_true',
+                        help='Show images after distortion-correction to '
+                             'verify calibration')
     parser.add_argument('directory', type=str)
     args = parser.parse_args()
     imgs = dict()
@@ -85,8 +98,8 @@ def main():
         for fname, img in imgs.items():
             # Load the image in grayscale mode
             undistorted_img = undistorter.undistortImage(img)
-            undistorted_img = undistorted_img[:, :, ::-1] # RGB<->BGR flip
-            img = img[:, :, ::-1] # RGB<->BGR flip
+            undistorted_img = undistorted_img[:, :, ::-1]  # RGB<->BGR flip
+            img = img[:, :, ::-1]  # RGB<->BGR flip
             comparison_plot(img, undistorted_img, 'Raw', 'Undistorted', fname)
         plt.show()
 
