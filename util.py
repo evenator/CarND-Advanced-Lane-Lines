@@ -7,16 +7,6 @@ import numpy as np
 Various utility functions for drawing lanes and displaying images
 '''
 
-def save_animation(filename, imgs, duration):
-    '''
-    Create a looping animated GIF image
-
-    filename -- Path to save the image
-    imgs -- Array-like of frames for the animation (must all be the same shape)
-    duration -- Duration (seconds) to show each frame
-    '''
-    frame1 = Image(imgs[0])
-    frame1.save(filename, save_all=True, duration=duration, loop=-1, append_images=[Image(i) for i in imgs[1:]])
 
 def comparison_plot(img1, img2, label1, label2, top_label):
     '''
@@ -38,6 +28,7 @@ def comparison_plot(img1, img2, label1, label2, top_label):
     f.suptitle(top_label)
     return f
 
+
 def draw_lane(left_line, right_line, img_shape, resolution):
     '''
     Draw the filled-in lane on the ground image
@@ -48,7 +39,7 @@ def draw_lane(left_line, right_line, img_shape, resolution):
     resolution -- Resolution of the output image in pixels/meter
     '''
     canvas = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
-    y_pixels = range(0, img_shape[0], int(resolution/10)) # A polyline with points every 10 cm
+    y_pixels = range(0, img_shape[0], int(resolution/10))  # A polyline with points every 10 cm
     pts_left = left_line.vals(y_pixels).astype(int)
     pts_right = right_line.vals(y_pixels).astype(int)
     # Recast the x and y points into usable format for cv2.fillPoly()
@@ -56,8 +47,9 @@ def draw_lane(left_line, right_line, img_shape, resolution):
     pts_right = np.array([np.flipud(np.transpose(np.vstack([pts_right, y_pixels])))])
     pts = np.hstack((pts_left, pts_right))
     # Draw the lane onto the warped blank image
-    cv2.fillPoly(canvas, np.int_([pts]), (0,255, 0))
+    cv2.fillPoly(canvas, np.int_([pts]), (0, 255, 0))
     return canvas
+
 
 def plot_on_img(img, *lines, color='b'):
     '''
@@ -84,4 +76,3 @@ def plot_on_img(img, *lines, color='b'):
     out_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
     out_img = out_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     return out_img
-
