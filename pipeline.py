@@ -29,13 +29,13 @@ def valid(left_line, right_line):
     y_vals = [0.0, 1.0, 2.0, 5.0, 10.0, 20.0]
     widths = left_line.vals_m(y_vals) - right_line.vals_m(y_vals)
     width_var = np.var(widths)
-    if width_var > 0.2: # TODO: Tune this
+    if width_var > 0.2:
         print("Lines not parallel (width variance={})".format(width_var))
         return False
     # Check curvature is sane
     # See http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm
     mean_curvature = 2.0/(left_line.radius() + right_line.radius())
-    if mean_curvature > 0.005679: # Curvature in 1/m for radius = 587 ft
+    if mean_curvature > 0.005679:  # Curvature in 1/m for radius = 587 ft
         print("Curvature is too large (curvature={})".format(mean_curvature))
         return False
     return True
@@ -82,15 +82,19 @@ class Pipeline(object):
                 plt.figure()
                 plt.title('Undistorted')
                 plt.imshow(img)
-            lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots = self.show_all)
+            lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots=self.show_all)
             transformed_lane_img = self.transformer.transformImage(lane_img)
             if self.show_all:
                 plt.figure()
                 plt.title('Top-down Binary Lane Image')
                 plt.imshow(transformed_lane_img, cmap='gray')
-            (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img, self.left_lane, self.right_lane, show_plots=self.show_all)
+            (left_lane, right_lane) = self.lane_fitter.fit_lanes(transformed_lane_img,
+                                                                 self.left_lane,
+                                                                 self.right_lane,
+                                                                 show_plots=self.show_all)
             for line in left_lane, right_lane:
-                line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2, undistorted.shape[0]])[0][0][0]
+                line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2,
+                                                                 undistorted.shape[0]])[0][0][0]
                 line.closest_y = transformed_lane_img.shape[0]
             if valid(left_lane, right_lane):
                 self.left_lane = left_lane
@@ -100,17 +104,34 @@ class Pipeline(object):
                     self.left_lane = left_lane
                 if self.right_lane is None:
                     self.right_lane = right_lane
-            curvature_img = draw_lane(self.left_lane, self.right_lane, transformed_lane_img.shape, self.lane_fitter.resolution)
-            curvature_img_warped = self.transformer.inverseTransformImage(curvature_img, undistorted.shape)
+            curvature_img = draw_lane(self.left_lane,
+                                      self.right_lane,
+                                      transformed_lane_img.shape,
+                                      self.lane_fitter.resolution)
+            curvature_img_warped = self.transformer.inverseTransformImage(curvature_img,
+                                                                          undistorted.shape)
             composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
-            veh_position = (self.right_lane.dist_from_center_m() + self.left_lane.dist_from_center_m())/2
+            veh_position = (self.right_lane.dist_from_center_m() +
+                            self.left_lane.dist_from_center_m()) / 2
             curvature = self.left_lane.curvature()
             info = "Position:  {:.3f} m".format(veh_position)
             text_position = (10, 50)
-            composite_img = cv2.putText(composite_img, info, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+            composite_img = cv2.putText(composite_img,
+                                        info,
+                                        text_position,
+                                        cv2.FONT_HERSHEY_SIMPLEX,
+                                        1,
+                                        (255, 255, 255),
+                                        3)
             text_position = (10, 90)
             info = "Curvature: {:.6f} 1/m".format(curvature)
-            composite_img = cv2.putText(composite_img, info, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+            composite_img = cv2.putText(composite_img,
+                                        info,
+                                        text_position,
+                                        cv2.FONT_HERSHEY_SIMPLEX,
+                                        1,
+                                        (255, 255, 255),
+                                        3)
             return composite_img
         except Exception as e:
             print("Exception: {}".format(e))
@@ -149,7 +170,7 @@ def main():
 
     # Set up the binary lane extractor
     lane_extractor = LaneExtractor(0.9)
-    
+
     # Set up the lane fitter
     lane_fitter = LaneFitter(transformer.getResolution())
 
