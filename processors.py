@@ -6,6 +6,7 @@ import numpy as np
 from numpy.linalg import lstsq as solve_least_squares
 from scipy.signal import find_peaks_cwt
 
+
 def scaled_abs(img):
     '''
     Take the absolute value of an image, scale it to [0,255] and cast it to uint8
@@ -13,17 +14,20 @@ def scaled_abs(img):
     abs_img = np.abs(img)
     return np.uint8(255 * abs_img / np.max(abs_img))
 
+
 def XSobel(img, ksize=3):
     '''
     Perform Sobel gradient along the X axis
     '''
     return cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ksize)
 
+
 def YSobel(img, ksize=3):
     '''
     Perform Sobel gradient along the Y axis
     '''
     return cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ksize)
+
 
 class GroundProjector(object):
     '''
@@ -86,7 +90,8 @@ class GroundProjector(object):
         return cv2.warpPerspective(src, self._P, output_shape[1::-1], flags=cv2.WARP_INVERSE_MAP)
 
     @classmethod
-    def from_point_correspondence(cls, image_pts, object_points, output_resolution, output_size=None):
+    def from_point_correspondence(cls, image_pts, object_points, output_resolution,
+                                  output_size=None):
         '''
         Create a GroundProjector from image/point correspondences
 
@@ -104,7 +109,6 @@ class GroundProjector(object):
         output_size = (int(output_resolution * output_size[0]),
                        int(output_resolution * output_size[1]))
         return cls(P, output_size)
-
 
 
 class Undistorter(object):
@@ -153,9 +157,9 @@ class LaneExtractor(object):
         '''
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
         yuv = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
-        y = yuv[:,:,0]
+        y = yuv[:, :, 0]
         y = y / np.max(y)
-        s = hls[:,:,2]
+        s = hls[:, :, 2]
         s = s / np.max(s)
         ys = y + s
         ys_uint8 = (ys / np.max(ys) * 255).astype(np.uint8)
@@ -174,12 +178,13 @@ class LaneExtractor(object):
             a4.set_title('Binary')
         return binary
 
+
 class LaneFitter(object):
     '''
     A Processor that takes in a binary lane image in top-down perspective and
     finds the lane lines.
     '''
-    def __init__(self, resolution, search_box_size_margin=None, max_range = 30.0):
+    def __init__(self, resolution, search_box_size_margin=None, max_range=30.0):
         '''
         Constructor
 
@@ -214,7 +219,7 @@ class LaneFitter(object):
         img -- Image to search in
         '''
         height = img.shape[0]
-        smoothed_histogram = self.smoothed_histogram(img[int(height/2):,:])
+        smoothed_histogram = self.smoothed_histogram(img[int(height/2):, :])
         sorted_peaks = self.find_peaks(smoothed_histogram)
         line1 = sorted_peaks[0]
         for line2 in sorted_peaks[1:]:
@@ -292,8 +297,14 @@ class LaneFitter(object):
         x = np.concatenate((left_lane_points[1], right_lane_points[1]))
         n_left_points = len(left_lane_points[0])
         n_right_points = len(right_lane_points[0])
-        y = np.concatenate((np.stack((left_lane_points[0]**2, left_lane_points[0], np.ones(n_left_points), np.zeros(n_left_points)), axis=1),
-                            np.stack((right_lane_points[0]**2, right_lane_points[0], np.zeros(n_right_points), np.ones(n_right_points)), axis=1)))
+        y = np.concatenate((np.stack((left_lane_points[0]**2,
+                                      left_lane_points[0],
+                                      np.ones(n_left_points),
+                                      np.zeros(n_left_points)), axis=1),
+                            np.stack((right_lane_points[0]**2,
+                                      right_lane_points[0],
+                                      np.zeros(n_right_points),
+                                      np.ones(n_right_points)), axis=1)))
         p = solve_least_squares(y, x)[0]
         if left_line is None:
             left_line = Line()
@@ -311,7 +322,7 @@ class LaneFitter(object):
 
         return left_line, right_line
 
-    def fit_lanes(self, img, last_left = None, last_right = None, show_plots = False):
+    def fit_lanes(self, img, last_left=None, last_right=None, show_plots=False):
         '''
         Find both lanes in the top-down binary lane image.
 
@@ -337,7 +348,9 @@ class LaneFitter(object):
             keep_right = (dx_right < self.search_box_size_margin) & keep_y
             left_lane_points = (y[keep_left], x[keep_left])
             right_lane_points = (y[keep_right], x[keep_right])
-        left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points, last_left, last_right, show_plots)
+        left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points,
+                                                    last_left, last_right,
+                                                    show_plots)
         if show_plots:
             plot_img = np.copy(closed_img)
             plot_img = cv2.cvtColor(plot_img*255, cv2.COLOR_GRAY2RGB)
