@@ -5,7 +5,7 @@ In this project, I used more advanced image processing techniques to detect
 the lane in front of a car from images taken by a forward-facing camera. The
 general process for this project is as follows:
 
-1. Calibrate the camera using a given set of chessboard images.
+1. Calibrate the camera using a given set of chess board images.
 2. Use the calculated camera calibration to perform distortion correction on
   the input image.
 3. Use color transformations and gradients to create a thresholded binary
@@ -17,7 +17,7 @@ general process for this project is as follows:
 7. Determine the curvature of the lane and the vehicle position with respect
   to the center of the lane.
 8. Draw the detected lane and warp it back onto the original image perspective.
-9. Output a vision display of the lane boundaries overlaid on the original
+9. Output a visual display of the lane boundaries overlaid on the original
   image, as well as a numerical estimate of the lane curvature and vehicle
   position.
 
@@ -34,7 +34,7 @@ image.
 The `undistort()` function requires a camera calibration matrix and a vector of
 distortion coefficients. The code to generate the camera calibration can be
 found in `camera_calibration.py`, which is a standalone script to generate these
-parameters from a directory of chessboard images. It opens all of the images
+parameters from a directory of chess board images. It opens all of the images
 in the directory, finds the corners of the chessboards, and then uses OpenCV's
 `calibrateCamera()` function to generate a camera calibration matrix and
 distortion coefficients. The camera calibration matrix is saved to
@@ -59,12 +59,12 @@ match on cars in the neighboring lane. Thresholding the gradients in different
 ways did not seem to eliminate this problem.
 
 Instead, I used the sum of the S channel of HLS and the Y channel of YUV. The
-S channel responds to both white and yellow lane lines, but also responds to
+S channel responds to both white and yellow lane lines but also responds to
 cars in the neighboring lanes. The Y channel responds more strongly to white
-lines than yellow, but responds to both. I normalize both and then sum them
+lines than yellow but responds to both. I normalize both and then sum them
 to get a combined grayscale image that responds most strongly to the lines
 (and responds to both yellow and white lines). I perform histogram equalization
-on the grayscale image to account for differences in lighting, then threshold
+on the grayscale image to account for differences in lighting then threshold
 the image. Because this image responds so strongly to the lines, I was able to
 use a relatively high threshold of 0.9. The most challenging image of the test
 images was `test6.jpg`, which has a black car in the neighboring lane. You can
@@ -76,7 +76,7 @@ Top-down Perspective Transform
 
 ![Image Perspective Tranform](output_images/perspective.png)
 
-The third step of the pipeline is perspective transformation from the camera's
+The third step of the pipeline is a perspective transformation from the camera's
 point of view to a top-down perspective. This is accomplished with a
 `GroundProjector` object. `GroundProjector` is a processor class that I defined
 in `processors.py` that encapsulates methods for transforming between the camera
@@ -98,7 +98,7 @@ transformation. `perspective_calculation.py` constructs a `GroundProjector`
 object and saves with a Python pickle to `projector.p`, which is loaded by the
 pipeline and used for processing.
 
-Here, you can see the the same binary image from the previous step in the
+Here, you can see the same binary image from the previous step in the
 pipeline transformed into the top-down perspective:
 
 ![Top-down Binary Lane Image](output_images/transformed_binary.png)
@@ -112,8 +112,8 @@ Before it's possible to fit lane lines to the image, the binary image must
 be converted to a set of pixel coordinates in the left and right lane lines.
 This is performed using a sliding window search. The sliding window for each
 line starts at the bottom of the image, at the peaks of a histogram of
-x-coordinates of of pixels in the bottom half of the image. There is a geometric
-constraint that the peaks must be at least 2 meters apart, incase the two
+x-coordinates of pixels in the bottom half of the image. There is a geometric
+constraint that the peaks must be at least 2 meters apart, in case the two
 strongest peaks are part of the same lane line. Once the starting x-coordinate
 is known, a 2-meter wide rectangular window is moved up each of the lane lines.
 In each iteration, the pixels inside the windows are added to the respective
@@ -190,18 +190,18 @@ Discussion
 ----------
 
 The main problem I faced with this project was extracting binary images
-containing only lanes. The gradient-based methods were ulimately unsatisfactory.
+containing only lanes. The gradient-based methods were ultimately unsatisfactory.
 Aside from that, the project was relatively straight forward, but it was a lot
 of work.
 
-This solutions still has several shortcomings:
+This solution still has several shortcomings:
 
 - It performs poorly in shadows.
 - It performs poorly if there are objects in the lane ahead.
 - It performs poorly if the ground is not planar.
 
 All of these shortcomings are apparent when running on either of the challenge
-videos. The problem with shadows can probably be solves using better
+videos. The problem with shadows can probably be solved using better
 normalization and techniques and possibly reintroducing the gradients in the
 binary image selection. The other two problems are primarily related to not
 knowing the true shape of the ground and not eliminating things that are not
