@@ -1,4 +1,4 @@
-from .datatypes import FilteredLine as Line
+from .datatypes import Lane, FilteredLine as Line
 
 import cv2
 import matplotlib.pyplot as plt
@@ -134,7 +134,7 @@ class Undistorter(object):
 
 class LaneExtractor(object):
     '''
-    Processor to take in a color (RGB) image in camera perspective and return
+    Processor to take in a color (BGR) image in camera perspective and return
     a binary image in camera perspective that contains mostly lane lines
     '''
     def __init__(self, ys_thresh):
@@ -155,8 +155,8 @@ class LaneExtractor(object):
 
         Returns a binary image in the camera perspective
         '''
-        hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-        yuv = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+        hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+        yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         y = yuv[:, :, 0]
         y = y / np.max(y)
         s = hls[:, :, 2]
@@ -249,7 +249,7 @@ class LaneFitter(object):
                 points = (points[0] + start_y, points[1] + start_x)
                 count = len(points[0])
                 if count > self.recenter_thresh:
-                    # Recenter the search box on the x-centroid of the lane
+                    # Recenter the search box on the x-centroid of the lane line
                     x_center = int(np.mean(points[1]))
                 lane_indexes.append(points)
         return np.concatenate(left_indexes, 1), np.concatenate(right_indexes, 1)
@@ -281,85 +281,82 @@ class LaneFitter(object):
         smoothed_histogram = np.convolve(histogram, w, 'same')
         return smoothed_histogram
 
-    def find_two_lanes(self,
-                       left_lane_points,
-                       right_lane_points,
-                       left_line,
-                       right_line,
+    def find_two_lines(self,
+                       left_line_points,
+                       right_line_points,
+                       lane=None,
                        show_plot=False):
         '''
         Perform a joint polynomial fit that constrains the two lane lines
         to be parallel.
 
-        left_lane_points -- list of coordinates of points in the left lane line
-        right_lane_points -- list of coordinates of points in the right lane line
+        left_line_points -- list of coordinates of points in the left lane line
+        right_line_points -- list of coordinates of points in the right lane line
         '''
-        x = np.concatenate((left_lane_points[1], right_lane_points[1]))
-        n_left_points = len(left_lane_points[0])
-        n_right_points = len(right_lane_points[0])
-        y = np.concatenate((np.stack((left_lane_points[0]**2,
-                                      left_lane_points[0],
+        x = np.concatenate((left_line_points[1], right_line_points[1]))
+        n_left_points = len(left_line_points[0])
+        n_right_points = len(right_line_points[0])
+        y = np.concatenate((np.stack((left_line_points[0]**2,
+                                      left_line_points[0],
                                       np.ones(n_left_points),
                                       np.zeros(n_left_points)), axis=1),
-                            np.stack((right_lane_points[0]**2,
-                                      right_lane_points[0],
+                            np.stack((right_line_points[0]**2,
+                                      right_line_points[0],
                                       np.zeros(n_right_points),
                                       np.ones(n_right_points)), axis=1)))
         p = solve_least_squares(y, x)[0]
-        if left_line is None:
-            left_line = Line()
-        if right_line is None:
-            right_line = Line()
-        left_line.setFit(np.array([p[0], p[1], p[2]]))
-        right_line.setFit(np.array([p[0], p[1], p[3]]))
+        if lane is None:
+            lane = Lane(Line(), Line())
+        if lane.left is None:
+            lane.left = Line()
+        if lane.right is None:
+            lane.right = Line()
+        lane.left.setFit(np.array([p[0], p[1], p[2]]))
+        lane.right.setFit(np.array([p[0], p[1], p[3]]))
 
         if show_plot:
             plt.figure()
-            plt.plot(left_lane_points[0], left_lane_points[1], 'r.')
-            plt.plot(right_lane_points[0], right_lane_points[1], 'b.')
-            plt.plot(left_lane_points[0], left_line.vals(left_lane_points[0]), 'r')
-            plt.plot(right_lane_points[0], right_line.vals(right_lane_points[0]), 'b')
+            plt.plot(left_line_points[0], left_line_points[1], 'r.')
+            plt.plot(right_line_points[0], right_line_points[1], 'b.')
+            plt.plot(left_line_points[0], lane.left.vals(left_line_points[0]), 'r')
+            plt.plot(right_line_points[0], lane.right.vals(right_line_points[0]), 'b')
+        return lane
 
-        return left_line, right_line
-
-    def fit_lanes(self, img, last_left=None, last_right=None, show_plots=False):
+    def fit_lane(self, img, last_lane=None, show_plots=False):
         '''
-        Find both lanes in the top-down binary lane image.
+        Find both lane lines in the top-down binary lane image.
 
         img -- Binary top-down lane image to search
-        last_left -- Previous detection of left lane line to use as a hint
-            (optional)
-        last_right -- Previous detection of the right lane line to use as a hint
-            (optional)
+        last_lane -- Previous detection of lane line to use as a hint
         '''
         closed_img = self.close_img(img)
         # min_y is used to filter out furthest points
         min_y = img.shape[0] - self.max_range
-        if last_left is None or last_right is None:
-            left_lane_points, right_lane_points = self.find_lane_points(closed_img)
+        if (last_lane is None or
+              last_lane.left is None or
+              last_lane.right is None):
+            left_line_points, right_line_points = self.find_lane_points(closed_img)
         else:
             y, x = img.nonzero()
             keep_y = y > min_y
-            left_x_pred = last_left.vals(y)
-            right_x_pred = last_right.vals(y)
+            left_x_pred = last_lane.left.vals(y)
+            right_x_pred = last_lane.right.vals(y)
             dx_left = np.abs(left_x_pred - x)
             dx_right = np.abs(right_x_pred - x)
             keep_left = (dx_left < self.search_box_size_margin) & keep_y
             keep_right = (dx_right < self.search_box_size_margin) & keep_y
-            left_lane_points = (y[keep_left], x[keep_left])
-            right_lane_points = (y[keep_right], x[keep_right])
-        left_lane, right_lane = self.find_two_lanes(left_lane_points, right_lane_points,
-                                                    last_left, last_right,
-                                                    show_plots)
+            left_line_points = (y[keep_left], x[keep_left])
+            right_line_points = (y[keep_right], x[keep_right])
+        lane = self.find_two_lines(left_line_points, right_line_points, last_lane, show_plots)
         if show_plots:
             plot_img = np.copy(closed_img)
             plot_img = cv2.cvtColor(plot_img*255, cv2.COLOR_GRAY2RGB)
-            for pt in zip(left_lane_points[0], left_lane_points[1]):
+            for pt in zip(left_line_points[0], left_line_points[1]):
                 plot_img[pt] = (255, 0, 0)
-            for pt in zip(right_lane_points[0], right_lane_points[1]):
+            for pt in zip(right_line_points[0], right_line_points[1]):
                 plot_img[pt] = (0, 0, 255)
             plt.figure()
             plt.imshow(plot_img)
-            plt.plot(left_lane.vals(left_lane_points[0]), left_lane_points[0], 'g')
-            plt.plot(right_lane.vals(right_lane_points[0]), right_lane_points[0], 'g')
-        return left_lane, right_lane
+            plt.plot(lane.left.vals(left_line_points[0]), left_line_points[0], 'g')
+            plt.plot(lane.right.vals(right_line_points[0]), right_line_points[0], 'g')
+        return lane

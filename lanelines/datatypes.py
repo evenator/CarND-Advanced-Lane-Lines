@@ -1,5 +1,42 @@
 import numpy as np
 
+class Lane(object):
+    '''
+    A lane is composed of a left and right Line.
+    '''
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+    
+    def valid(self):
+        '''
+        Check whether the lane meets validity criteria
+        '''
+        # Check that both lines detected
+        if self.left is None or self.right is None:
+            print("Both lines not detected")
+            return False
+        # Check vehicle is in lane
+        veh_pos = (self.right.dist_from_center_m() + self.left.dist_from_center_m())/2
+        if abs(veh_pos) > 1.0:
+            print("Vehicle is not in the center of the lane (position={})".format(veh_pos))
+            return False
+        # Check lines parallel
+        # by checking the variance of the widths at many points
+        y_vals = [0.0, 1.0, 2.0, 5.0, 10.0, 20.0]
+        widths = self.left.vals_m(y_vals) - self.right.vals_m(y_vals)
+        width_var = np.var(widths)
+        if width_var > 0.2:
+            print("Lines not parallel (width variance={})".format(width_var))
+            return False
+        # Check curvature is sane
+        # See http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm
+        mean_curvature = 2.0/(self.left.radius() + self.right.radius())
+        if mean_curvature > 0.005679:  # Curvature in 1/m for radius = 587 ft
+            print("Curvature is too large (curvature={})".format(mean_curvature))
+            return False
+        return True
+
 
 class ExponentialFilter(object):
     '''

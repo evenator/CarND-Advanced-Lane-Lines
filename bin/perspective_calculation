@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import cv2
-import matplotlib.image as mpimg
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -57,7 +56,7 @@ print("Output shape (pixels): {}".format(output_shape))
 transformed_pts = projector.transformPoint(img_pts).astype(np.int32)
 img_pts = img_pts.astype(np.int32)
 filename = 'test_images/straight_lines1.jpg'
-img = mpimg.imread(filename)
+img = cv2.imread(filename)
 warped_img = projector.transformImage(img)
 cv2.polylines(img, [img_pts], isClosed=True, color=(255, 0, 0), thickness=3)
 cv2.polylines(warped_img, transformed_pts, isClosed=True, color=(255, 0, 0), thickness=int(px_m/10))
