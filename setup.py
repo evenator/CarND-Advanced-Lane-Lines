@@ -16,6 +16,5 @@ setup(name='lanelines',
                         'moviepy',
                         'numpy',
                         'opencv-python',
-                        'Pillow',
                         'scipy'],
       zip_safe=False)
