@@ -1,4 +1,4 @@
-from datatypes import FilteredLine as Line
+from .datatypes import FilteredLine as Line
 
 import cv2
 import matplotlib.pyplot as plt

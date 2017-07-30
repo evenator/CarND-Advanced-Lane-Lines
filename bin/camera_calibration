@@ -1,5 +1,7 @@
-from processors import Undistorter
-from util import comparison_plot
+#! /usr/bin/env python
+
+from lanelines.processors import Undistorter
+from lanelines.util import comparison_plot
 
 import argparse
 import cv2

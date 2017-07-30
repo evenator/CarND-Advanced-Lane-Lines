@@ -1,0 +1,21 @@
+from setuptools import setup
+
+setup(name='lanelines',
+      version='1.0.0',
+      description='Lane line detection for self driving cars.',
+      url='https://github.com/evenator/CarND-Advanced-Lane-Lines',
+      author='Ed Venator',
+      author_email='evenator@gmail.com',
+      license='BSD',
+      packages=['lanelines'],
+      scripts=['bin/camera_calibration',
+               'bin/frame_extractor',
+               'bin/perspective_calculation',
+               'bin/pipeline'],
+      install_requires=['matplotlib',
+                        'moviepy',
+                        'numpy',
+                        'opencv-python',
+                        'Pillow',
+                        'scipy'],
+      zip_safe=False)

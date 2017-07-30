@@ -1,5 +1,7 @@
-from util import *
-from processors import *
+#! /usr/bin/env python
+
+from lanelines.util import *
+from lanelines.processors import *
 
 import argparse
 import cv2
