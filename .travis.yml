@@ -1,5 +1,10 @@
+language: python - "3.5"
+
+install:
+    - pip install --user travis-sphinx
+
 script:
     travis-sphinx build
 
 after_success:
-    travis-sphynx deploy
+    travis-sphinx deploy
