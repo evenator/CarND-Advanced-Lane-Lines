@@ -158,12 +158,30 @@ def main():
             plt.imshow(composite_img)
             plt.show()
     elif input_ext in ['mp4']:
-        clip = VideoFileClip(args.input_file)
-        if args.subclip and len(args.subclip) == 2:
-            clip = clip.subclip(args.subclip[0], args.subclip[1])
-        clip = clip.fl_image(process)
+        cap = cv2.VideoCapture(args.input_file)
+        if not cap.isOpened():
+            raise Exception("Could not open video file!")
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        frame_rate = cap.get(cv2.CAP_PROP_FPS)
+        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        print((frame_rate, width, height))
         print("Writing video file to {}".format(args.output_file))
-        clip.write_videofile(args.output_file, audio=False)
+        out = cv2.VideoWriter(args.output_file, fourcc, frame_rate, (width, height))
+        if args.subclip and len(args.subclip) >= 1:
+            cap.set(cv2.CAP_PROP_POS_MSEC, args.subclip[0] * 1000)
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break  # End of input file
+            composite_img = process(frame)
+            out.write(composite_img)
+            if (args.subclip and
+                  len(args.subclip >= 2) and
+                  cap.get(CV_CAP_PROP_POS_MSEC)/1000.0 >= args.subclip[1]):
+                break  # End of subclip
+        cap.release()
+        out.release()
     else:
         print("Invalid input file extension .{}".format(input_ext))
 if __name__ == "__main__":
