@@ -1,0 +1,52 @@
+#! /usr/bin/env python
+
+import argparse
+import cv2
+from lanelines.camera_calibration import calibrate_from_images
+from lanelines.processors import Undistorter
+from lanelines.util import comparison_plot
+import numpy as np
+import os
+
+def main():
+    description = 'Calculate and save the camera matrix and distortion coefficients from \
+a directory of chessboard images'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--board-size', nargs=2, type=int, default=(9, 6),
+                        help='Two-tuple containing the width and height of the '
+                             'chessboard (number of corners)')
+    parser.add_argument('--show-chessboards', action='store_true',
+                        help='Display chessboards with corners found')
+    parser.add_argument('--show-undistorted', action='store_true',
+                        help='Show images after distortion-correction to '
+                             'verify calibration')
+    parser.add_argument('directory', type=str)
+    args = parser.parse_args()
+    imgs = dict()
+    for img_file in os.listdir(args.directory):
+        # Load the image in grayscale mode
+        imgs[img_file] = cv2.imread(os.path.join(args.directory, img_file))
+    K, D = calibrate_from_images(imgs, args.board_size, args.show_chessboards)
+    print("Camera Matrix:")
+    print(K)
+    print("Distortion Coeffeficients:")
+    print(D)
+
+    print("Saving camera matrix to camera_matrix.npy")
+    np.save('camera_matrix.npy', K)
+    print("Saving distortion coefficients to distortion_coefficients.npy")
+    np.save('distortion_coefficients.npy', D)
+    undistorter = Undistorter(K, D)
+
+    if args.show_undistorted:
+        for fname, img in imgs.items():
+            # Load the image in grayscale mode
+            undistorted_img = undistorter.undistortImage(img)
+            undistorted_img = undistorted_img[:, :, ::-1]  # RGB<->BGR flip
+            img = img[:, :, ::-1]  # RGB<->BGR flip
+            comparison_plot(img, undistorted_img, 'Raw', 'Undistorted', fname)
+        plt.show()
+
+
+if __name__ == "__main__":
+    main()
