@@ -69,7 +69,8 @@ class ExponentialFilter(object):
 
 class Line(object):
     '''
-    An object to represent a detected lane line
+    An object to represent a detected lane line, with filtering on the
+    polynomial fit.
     '''
     def __init__(self):
         self.poly = []         # Polynomial coefficients
@@ -111,19 +112,10 @@ class Line(object):
         '''
         return np.polyval(self.poly, y_vals)
 
-    def setFit(self, coefficients):
+    def updateFit(self, coefficients):
         '''
-        Set the current fit to a list of polynomial coefficients
+        Update the line fit with a new detection
         '''
-        self.poly = coefficients
-
-
-class FilteredLine(Line):
-    '''
-    An object to represent a detected lane line, with filtering on the
-    polynomial fit.
-    '''
-    def setFit(self, coefficients):
         if not hasattr(self, 'filters'):
             self.filters = [ExponentialFilter(alpha=0.2, init=x) for x in coefficients]
         self.poly = [f(x) for x, f in zip(coefficients, self.filters)]

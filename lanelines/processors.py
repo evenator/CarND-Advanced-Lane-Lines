@@ -1,4 +1,4 @@
-from .datatypes import Lane, FilteredLine as Line
+from .datatypes import Lane, Line
 from .util import draw_lane
 
 import cv2
@@ -312,8 +312,8 @@ class LaneFitter(object):
             lane.left = Line()
         if lane.right is None:
             lane.right = Line()
-        lane.left.setFit(np.array([p[0], p[1], p[2]]))
-        lane.right.setFit(np.array([p[0], p[1], p[3]]))
+        lane.left.updateFit(np.array([p[0], p[1], p[2]]))
+        lane.right.updateFit(np.array([p[0], p[1], p[3]]))
 
         if show_plot:
             plt.figure()
