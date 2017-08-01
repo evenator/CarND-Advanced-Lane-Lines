@@ -1,4 +1,5 @@
 from .datatypes import Lane, FilteredLine as Line
+from .util import draw_lane
 
 import cv2
 import matplotlib.pyplot as plt
@@ -360,3 +361,97 @@ class LaneFitter(object):
             plt.plot(lane.left.vals(left_line_points[0]), left_line_points[0], 'g')
             plt.plot(lane.right.vals(right_line_points[0]), right_line_points[0], 'g')
         return lane
+
+
+class Pipeline(object):
+    def __init__(self, undistorter, lane_extractor, transformer, lane_fitter, show_all=False):
+        '''
+        Full processing pipeline for lane lines
+        undistorter -- An Undistorter processor object
+        lane_extractor -- A LaneExtractor processor object
+        transformer -- A GroundProjector processor object
+        lane_fitter -- A LaneFitter processor object
+        last_left -- (optional) A Line object representing the left lane line in the
+            previous frame of video
+        last_right -- (optional) A Line object representing the right lane line in
+            the previous frame of video
+        show_all -- If True, show all intermediate images in PyPlot figures
+            (default False)
+        '''
+        self.undistorter = undistorter
+        self.lane_extractor = lane_extractor
+        self.transformer = transformer
+        self.lane_fitter = lane_fitter
+        self.show_all = show_all
+        self.lane = Lane(None, None)
+        self.max_age = 5
+
+    def __call__(self, img):
+        '''
+        Process a frame for lane lines
+
+        img -- The input image, directly from the camera
+
+        Returns composite_img
+
+        composite_img -- The input image, undistorted, with the lane drawn on it in
+            green
+        '''
+        try:
+            undistorted = self.undistorter.undistortImage(img)
+            if self.show_all:
+                plt.figure()
+                plt.title('Undistorted')
+                plt.imshow(img)
+            lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots=self.show_all)
+            transformed_lane_img = self.transformer.transformImage(lane_img)
+            if self.show_all:
+                plt.figure()
+                plt.title('Top-down Binary Lane Image')
+                plt.imshow(transformed_lane_img, cmap='gray')
+            lane = self.lane_fitter.fit_lane(transformed_lane_img,
+                                             self.lane,
+                                             show_plots=self.show_all)
+            for line in lane.left, lane.right:
+                line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2,
+                                                                 undistorted.shape[0]])[0][0][0]
+                line.closest_y = transformed_lane_img.shape[0]
+            if lane.valid():
+                self.lane = lane
+            else:
+                if self.lane.left is None:
+                    self.lane.left = lane.left
+                if self.lane.right is None:
+                    self.lane.right = lane.right
+            curvature_img = draw_lane(self.lane,
+                                      transformed_lane_img.shape,
+                                      self.lane_fitter.resolution)
+            curvature_img_warped = self.transformer.inverseTransformImage(curvature_img,
+                                                                          undistorted.shape)
+            composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
+            veh_position = (self.lane.left.dist_from_center_m() +
+                            self.lane.right.dist_from_center_m()) / 2
+            curvature = self.lane.left.curvature()
+            info = "Position:  {:.3f} m".format(veh_position)
+            text_position = (10, 50)
+            composite_img = cv2.putText(composite_img,
+                                        info,
+                                        text_position,
+                                        cv2.FONT_HERSHEY_SIMPLEX,
+                                        1,
+                                        (255, 255, 255),
+                                        3)
+            text_position = (10, 90)
+            info = "Curvature: {:.6f} 1/m".format(curvature)
+            composite_img = cv2.putText(composite_img,
+                                        info,
+                                        text_position,
+                                        cv2.FONT_HERSHEY_SIMPLEX,
+                                        1,
+                                        (255, 255, 255),
+                                        3)
+            return composite_img
+        except Exception as e:
+            print("Exception: {}".format(e))
+            return undistorted
+
