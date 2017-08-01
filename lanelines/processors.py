@@ -386,9 +386,54 @@ class Pipeline(object):
         self.lane = Lane(None, None)
         self.max_age = 5
 
+    def detect_lane(self, img, return_images=False):
+        '''
+        Process an image. If the detected lane is valid, update self.lane. Return the detected
+        lane (note that the detected lane is returned even if invalid, so it may not match
+        self.lane).
+
+        Arguments:
+        img -- The input image (BRG) from the camera
+        return_images -- If true, return a tuple:
+                        (lane, undistorted_img, lane_img, transformed_lane_img)
+        '''
+        undistorted_img = self.undistorter.undistortImage(img)
+        if self.show_all:
+            plt.figure()
+            plt.title('Undistorted')
+            plt.imshow(img)
+
+        lane_img = self.lane_extractor.extract_lanes(undistorted_img, show_plots=self.show_all)
+
+        transformed_lane_img = self.transformer.transformImage(lane_img)
+        if self.show_all:
+            plt.figure()
+            plt.title('Top-down Binary Lane Image')
+            plt.imshow(transformed_lane_img, cmap='gray')
+
+        lane = self.lane_fitter.fit_lane(transformed_lane_img,
+                                         self.lane,
+                                         show_plots=self.show_all)
+        for line in lane.left, lane.right:
+            line.middle_x = self.transformer.transformPoint([undistorted_img.shape[1]/2,
+                                                             undistorted_img.shape[0]])[0][0][0]
+            line.closest_y = transformed_lane_img.shape[0]
+        if lane.valid():
+            self.lane = lane
+        else:
+            if self.lane.left is None:
+                self.lane.left = lane.left
+            if self.lane.right is None:
+                self.lane.right = lane.right
+        if return_images:
+            return (lane, undistorted_img, lane_img, transformed_lane_img)
+        else:
+            return lane
+
     def __call__(self, img):
         '''
-        Process a frame for lane lines
+        Process an image and generate a composite image with the lane drawn in green and
+        the curvature of the lane and position of the vehicle printed on the image.
 
         img -- The input image, directly from the camera
 
@@ -398,48 +443,25 @@ class Pipeline(object):
             green
         '''
         try:
-            undistorted = self.undistorter.undistortImage(img)
-            if self.show_all:
-                plt.figure()
-                plt.title('Undistorted')
-                plt.imshow(img)
-            lane_img = self.lane_extractor.extract_lanes(undistorted, show_plots=self.show_all)
-            transformed_lane_img = self.transformer.transformImage(lane_img)
-            if self.show_all:
-                plt.figure()
-                plt.title('Top-down Binary Lane Image')
-                plt.imshow(transformed_lane_img, cmap='gray')
-            lane = self.lane_fitter.fit_lane(transformed_lane_img,
-                                             self.lane,
-                                             show_plots=self.show_all)
-            for line in lane.left, lane.right:
-                line.middle_x = self.transformer.transformPoint([undistorted.shape[1]/2,
-                                                                 undistorted.shape[0]])[0][0][0]
-                line.closest_y = transformed_lane_img.shape[0]
-            if lane.valid():
-                self.lane = lane
-            else:
-                if self.lane.left is None:
-                    self.lane.left = lane.left
-                if self.lane.right is None:
-                    self.lane.right = lane.right
+            lane, undistorted_img, lane_img, transformed_lane_img = self.detect_lane(img, True)
             curvature_img = draw_lane(self.lane,
                                       transformed_lane_img.shape,
                                       self.lane_fitter.resolution)
             curvature_img_warped = self.transformer.inverseTransformImage(curvature_img,
-                                                                          undistorted.shape)
-            composite_img = cv2.addWeighted(undistorted, 1, curvature_img_warped, 0.3, 0)
+                                                                          undistorted_img.shape)
+            composite_img = cv2.addWeighted(undistorted_img, 1, curvature_img_warped, 0.3, 0)
             veh_position = (self.lane.left.dist_from_center_m() +
                             self.lane.right.dist_from_center_m()) / 2
             curvature = self.lane.left.curvature()
             info = "Position:  {:.3f} m".format(veh_position)
             text_position = (10, 50)
+            white = (255, 255, 255)
             composite_img = cv2.putText(composite_img,
                                         info,
                                         text_position,
                                         cv2.FONT_HERSHEY_SIMPLEX,
                                         1,
-                                        (255, 255, 255),
+                                        white,
                                         3)
             text_position = (10, 90)
             info = "Curvature: {:.6f} 1/m".format(curvature)
@@ -448,10 +470,10 @@ class Pipeline(object):
                                         text_position,
                                         cv2.FONT_HERSHEY_SIMPLEX,
                                         1,
-                                        (255, 255, 255),
+                                        white,
                                         3)
             return composite_img
         except Exception as e:
             print("Exception: {}".format(e))
-            return undistorted
+            return undistorted_img
 
