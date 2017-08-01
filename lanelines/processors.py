@@ -312,8 +312,8 @@ class LaneFitter(object):
             lane.left = Line()
         if lane.right is None:
             lane.right = Line()
-        lane.left.updateFit(np.array([p[0], p[1], p[2]]))
-        lane.right.updateFit(np.array([p[0], p[1], p[3]]))
+        lane.left.update_fit(np.array([p[0], p[1], p[2]]))
+        lane.right.update_fit(np.array([p[0], p[1], p[3]]))
 
         if show_plot:
             plt.figure()
