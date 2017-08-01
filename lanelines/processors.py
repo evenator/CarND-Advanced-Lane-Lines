@@ -452,7 +452,7 @@ class Pipeline(object):
             composite_img = cv2.addWeighted(undistorted_img, 1, curvature_img_warped, 0.3, 0)
             veh_position = (self.lane.left.dist_from_center_m() +
                             self.lane.right.dist_from_center_m()) / 2
-            curvature = self.lane.left.curvature()
+            curvature = self.lane.curvature()
             info = "Position:  {:.3f} m".format(veh_position)
             text_position = (10, 50)
             white = (255, 255, 255)

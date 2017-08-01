@@ -8,6 +8,10 @@ class Lane(object):
         self.left = left
         self.right = right
     
+    def curvature(self):
+        '''Calculate and return the curvature of the lane, measured at the centerline'''
+        return 2.0 / (self.left.radius() + self.right.radius())
+
     def valid(self):
         '''
         Check whether the lane meets validity criteria
