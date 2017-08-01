@@ -67,9 +67,9 @@ def calibrateFromImgs(imgs, board_size, show_chessboards=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Calculate and save the '
-            'camera matrix and distortion coefficients from a directory of '
-            'chessboard images')
+    description = 'Calculate and save the camera matrix and distortion coefficients from \
+a directory of chessboard images'
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--board-size', nargs=2, type=int, default=(9, 6),
                         help='Two-tuple containing the width and height of the '
                              'chessboard (number of corners)')

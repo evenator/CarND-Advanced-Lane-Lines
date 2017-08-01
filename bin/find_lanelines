@@ -73,5 +73,6 @@ def main():
         clip.write_videofile(args.output_file, audio=False)
     else:
         print("Invalid input file extension .{}".format(input_ext))
+
 if __name__ == "__main__":
     main()

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Lane(object):
     '''
     A lane is composed of a left and right Line.
@@ -7,7 +8,7 @@ class Lane(object):
     def __init__(self, left, right):
         self.left = left
         self.right = right
-    
+
     def curvature(self):
         '''
         Calculate and return the curvature of the lane, measured at the centerline in units of
