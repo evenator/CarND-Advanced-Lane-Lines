@@ -9,8 +9,19 @@ class Lane(object):
         self.right = right
     
     def curvature(self):
-        '''Calculate and return the curvature of the lane, measured at the centerline'''
+        '''
+        Calculate and return the curvature of the lane, measured at the centerline in units of
+        1/meter.
+        '''
         return 2.0 / (self.left.radius() + self.right.radius())
+
+    def camera_position(self):
+        '''
+        Calculate and return the lateral offset of the camera from the center of the lane in
+        meters. Positive values indicate the camera is left of the center line, and negative values
+        indicate the camera is to the right of the center line.
+        '''
+        return (self.left.dist_from_center_m() + self.right.dist_from_center_m()) / 2.0
 
     def valid(self):
         '''
