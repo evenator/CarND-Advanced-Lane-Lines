@@ -1,3 +1,10 @@
+"""
+Processing pipeline objects and functions.
+
+Defines several processor objects that take in an image, process it, and output the processed image.
+Stringing several of these together allows creation of image processing pipelines.
+"""
+
 from .datatypes import Lane, Line
 from .util import draw_lane
 
@@ -9,59 +16,56 @@ from scipy.signal import find_peaks_cwt
 
 
 def scaled_abs(img):
-    '''
-    Take the absolute value of an image, scale it to [0,255] and cast it to uint8
-    '''
+    """Take the absolute value of an image, scale it to [0,255] and cast it to uint8."""
     abs_img = np.abs(img)
     return np.uint8(255 * abs_img / np.max(abs_img))
 
 
 def XSobel(img, ksize=3):
-    '''
-    Perform Sobel gradient along the X axis
-    '''
+    """Perform Sobel gradient along the X axis."""
     return cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ksize)
 
 
 def YSobel(img, ksize=3):
-    '''
-    Perform Sobel gradient along the Y axis
-    '''
+    """Perform Sobel gradient along the Y axis."""
     return cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ksize)
 
 
 class GroundProjector(object):
-    '''
-    Processor for transforming images from camera perspective to top-down view
-    and vice-versa, using perspective transform.
-    '''
+    """
+    Transforms images from camera perspective to a top-down view and vice-versa.
+
+    This is accomplished using a perspective transform.
+    """
+
     def __init__(self, P, resolution, output_size):
-        '''
-        Create a GroundProjector from a Perspective matrix
+        """
+        Create a GroundProjector from a Perspective matrix.
 
         P -- Perspective transform matrix, as created by
             cv2.getPerspectiveTransform
         output_size -- Default shape of the output image **in pixels** as a
             tuple (width, height).
         resolution -- Resolution in pixels per meter.
-        '''
+        """
         self._P = P
         self._output_size = output_size
         self._resolution = resolution
 
     def getResolution(self):
+        """Get the resolution in pixels per meter of the GroundProjector."""
         return self._resolution
 
     def transformImage(self, src, output_size=None):
-        '''
-        Transform an image from camera perspective to top-down view
+        """
+        Transform an image from camera perspective to top-down view.
 
         src -- Image to transform, as a numpy Array-like
         output_size -- Shape of the output image **in pixels** as a tuple
             (width, height). If set to None, use the default output shape of
             the GroundProjector. If there is no default output shape, use the
             shape of the src image.
-        '''
+        """
         if output_size is None:
             output_size = self._output_size
         if output_size is None:
@@ -69,11 +73,11 @@ class GroundProjector(object):
         return cv2.warpPerspective(src, self._P, output_size)
 
     def transformPoint(self, src):
-        '''
-        Transform a point from camera perspective to top-down view
+        """
+        Transform a point from camera perspective to top-down view.
 
         src -- Point to transform, as a numpy Array-like
-        '''
+        """
         src = np.array(src)
         while len(src.shape) < 3:
             src = np.array([src])
@@ -81,20 +85,20 @@ class GroundProjector(object):
         return dst
 
     def inverseTransformImage(self, src, output_shape):
-        '''
-        Transform an image from top-down view to camera perspective
+        """
+        Transform an image from top-down view to camera perspective.
 
         src -- Image to transform, as a numpy Array-like
         output_shape -- Shape of the output image **in pixels** as a tuple
             (width, height).
-        '''
+        """
         return cv2.warpPerspective(src, self._P, output_shape[1::-1], flags=cv2.WARP_INVERSE_MAP)
 
     @classmethod
     def from_point_correspondence(cls, image_pts, object_points, output_resolution,
                                   output_size=None):
-        '''
-        Create a GroundProjector from image/point correspondences
+        """
+        Create a GroundProjector from image/point correspondences.
 
         image_pts -- At least 4 pixel coordinates in image space
         object_pts -- At least 4 real-world object coordinates corresponding to
@@ -104,7 +108,7 @@ class GroundProjector(object):
         output_size -- Default shape of the output image **in meters** as a
             tuple (width, height). If set to None, there is no default output
             size
-        '''
+        """
         object_points = np.float32(object_points) * output_resolution
         P = cv2.getPerspectiveTransform(image_pts, object_points)
         output_size = (int(output_resolution * output_size[0]),
@@ -113,49 +117,50 @@ class GroundProjector(object):
 
 
 class Undistorter(object):
-    '''
-    Processor to perform dewarping using OpenCV's undistort function
-    '''
+    """Processor to perform dewarping using OpenCV's undistort function."""
+
     def __init__(self, K, D):
-        '''
-        Initialize the processor
+        """
+        Initialize the processor.
 
         K -- Camera matrix (2-D matrix of 3x3 floats)
         D -- Distortion coefficients (1-D vector of 5 floats)
-        '''
+        """
         self._K = K
         self._D = D
 
     def undistortImage(self, src):
-        '''
-        Undistort the raw camera image
-        '''
+        """Undistort the raw camera image."""
         return cv2.undistort(src, self._K, self._D)
 
 
 class LaneExtractor(object):
-    '''
-    Processor to take in a color (BGR) image in camera perspective and return
-    a binary image in camera perspective that contains mostly lane lines
-    '''
+    """
+    A processor that generates a binary lane image from a color (BGR) image.
+
+    The input is an undistorted color image in the camera perspective. The output is a binary
+    image where lane pixels are 1 and non-lane pixels are 0 in the same perspective as the
+    input.
+    """
+
     def __init__(self, ys_thresh):
-        '''
-        Constructor
+        """
+        Constructor.
 
         ys_thresh -- Threshold for lines in the Y+S image, which is scaled to
             [0.0, 1.0]. Recommended value: 0.9
-        '''
+        """
         self._ys_thresh = ys_thresh
 
     def extract_lanes(self, img, show_plots=False):
-        '''
-        Process an RGB image and return a binary image
+        """
+        Process an RGB image and return a binary image.
 
         img -- The RGB image to process (in camera perspective)
         show_plots -- Show intermediate images in PyPlot figures (default False)
 
         Returns a binary image in the camera perspective
-        '''
+        """
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
         yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         y = yuv[:, :, 0]
@@ -181,20 +186,18 @@ class LaneExtractor(object):
 
 
 class LaneFitter(object):
-    '''
-    A Processor that takes in a binary lane image in top-down perspective and
-    finds the lane lines.
-    '''
+    """A processor that finds and models lane lines in a binary lane image."""
+
     def __init__(self, resolution, search_box_size_margin=None, max_range=30.0):
-        '''
-        Constructor
+        """
+        Constructor.
 
         resolution -- Resolution of the input image in meters/pixel
         search_box_size_margin -- Number of pixels on either side of the center
             of the line to search for line pixels
         max_range -- Maximum range from the bottom of the image to include
             pixels (meters)
-        '''
+        """
         self.resolution = resolution
         if search_box_size_margin is None:
             self.search_box_size_margin = resolution
@@ -205,20 +208,17 @@ class LaneFitter(object):
         self.max_range = int(max_range * resolution)
 
     def close_img(self, img):
-        '''
-        Perform a morphological closing on the image to join clusters of
-        separate pixels in blobs.
-        '''
+        """Do a morphological closing to join clusters of separate pixels in blobs."""
         kernel_size = int(self.resolution/2)
         morph_kernel = np.ones((int(self.resolution/2), int(self.resolution/4)))
         return cv2.morphologyEx(img, cv2.MORPH_CLOSE, morph_kernel)
 
     def find_lane_points(self, img):
-        '''
+        """
         Find both lane line points using a histogram peaks and sliding filter.
 
         img -- Image to search in
-        '''
+        """
         height = img.shape[0]
         smoothed_histogram = self.smoothed_histogram(img[int(height/2):, :])
         sorted_peaks = self.find_peaks(smoothed_histogram)
@@ -256,12 +256,14 @@ class LaneFitter(object):
         return np.concatenate(left_indexes, 1), np.concatenate(right_indexes, 1)
 
     def find_peaks(self, data, order=None):
-        '''
-        Find the coordinates of the peaks in the 1-D vector, sorted by
-        magnitude
+        """
+        Find the coordinates of the peaks in the 1-D vector, sorted by magnitude.
+
+        This implementation uses the find_peak_cwt() method from scipy.signal, which is better
+        at rejecting noise around peaks than more naive methods.
 
         data -- Data to find peaks in
-        '''
+        """
         if order is None:
             order = self.resolution/4
         peaks = find_peaks_cwt(data, np.arange(1, order))
@@ -271,10 +273,13 @@ class LaneFitter(object):
         return sorted_peaks
 
     def smoothed_histogram(self, img):
-        '''
-        Calculate a histogram of the image over the x-axis, then smooth
-        using a sliding window filter
-        '''
+        """
+        Calculate a smoothed histogram of the image over the x-axis.
+
+        Smoothing is done using a sliding window filter with a window 1/4 the width of the image.
+
+        img -- The grayscale or black and white image to calculate the histogram on.
+        """
         height = img.shape[0]
         histogram = np.sum(img, axis=0)
         window = int(self.resolution/4)
@@ -287,13 +292,12 @@ class LaneFitter(object):
                        right_line_points,
                        lane=None,
                        show_plot=False):
-        '''
-        Perform a joint polynomial fit that constrains the two lane lines
-        to be parallel.
+        """
+        Perform a joint polynomial fit that constrains the two lane lines to be parallel.
 
         left_line_points -- list of coordinates of points in the left lane line
         right_line_points -- list of coordinates of points in the right lane line
-        '''
+        """
         x = np.concatenate((left_line_points[1], right_line_points[1]))
         n_left_points = len(left_line_points[0])
         n_right_points = len(right_line_points[0])
@@ -324,12 +328,12 @@ class LaneFitter(object):
         return lane
 
     def fit_lane(self, img, last_lane=None, show_plots=False):
-        '''
+        """
         Find both lane lines in the top-down binary lane image.
 
         img -- Binary top-down lane image to search
         last_lane -- Previous detection of lane line to use as a hint
-        '''
+        """
         closed_img = self.close_img(img)
         # min_y is used to filter out furthest points
         min_y = img.shape[0] - self.max_range
@@ -364,9 +368,12 @@ class LaneFitter(object):
 
 
 class Pipeline(object):
+    """Full processing pipeline for lane lines."""
+    
     def __init__(self, undistorter, lane_extractor, transformer, lane_fitter, show_all=False):
-        '''
-        Full processing pipeline for lane lines
+        """
+        Constructor that assembles the pipeline from processor stages.
+
         undistorter -- An Undistorter processor object
         lane_extractor -- A LaneExtractor processor object
         transformer -- A GroundProjector processor object
@@ -377,7 +384,7 @@ class Pipeline(object):
             the previous frame of video
         show_all -- If True, show all intermediate images in PyPlot figures
             (default False)
-        '''
+        """
         self.undistorter = undistorter
         self.lane_extractor = lane_extractor
         self.transformer = transformer
@@ -387,16 +394,17 @@ class Pipeline(object):
         self.max_age = 5
 
     def detect_lane(self, img, return_images=False):
-        '''
-        Process an image. If the detected lane is valid, update self.lane. Return the detected
-        lane (note that the detected lane is returned even if invalid, so it may not match
-        self.lane).
+        """
+        Process an image to extract the lane geometry.
+
+        If the detected lane is valid, update self.lane. Return the detected lane (note that the
+        detected lane is returned even if invalid, so it may not match self.lane).
 
         Arguments:
         img -- The input image (BRG) from the camera
         return_images -- If true, return a tuple:
                         (lane, undistorted_img, lane_img, transformed_lane_img)
-        '''
+        """
         undistorted_img = self.undistorter.undistortImage(img)
         if self.show_all:
             plt.figure()
@@ -431,9 +439,11 @@ class Pipeline(object):
             return lane
 
     def __call__(self, img):
-        '''
-        Process an image and generate a composite image with the lane drawn in green and
-        the curvature of the lane and position of the vehicle printed on the image.
+        """
+        Process an image and draw the lane on it.
+        
+        Generates a composite image with the lane drawn in green and the curvature of the lane
+        and position of the vehicle printed on the image.
 
         img -- The input image, directly from the camera
 
@@ -441,7 +451,7 @@ class Pipeline(object):
 
         composite_img -- The input image, undistorted, with the lane drawn on it in
             green
-        '''
+        """
         try:
             lane, undistorted_img, lane_img, transformed_lane_img = self.detect_lane(img, True)
             curvature_img = draw_lane(self.lane,
