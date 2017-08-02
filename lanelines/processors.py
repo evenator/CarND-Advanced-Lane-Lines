@@ -337,9 +337,9 @@ class LaneFitter(object):
         closed_img = self.close_img(img)
         # min_y is used to filter out furthest points
         min_y = img.shape[0] - self.max_range
-        if (last_lane is None or
-              last_lane.left is None or
-              last_lane.right is None):
+        if last_lane is None or \
+           last_lane.left is None or \
+           last_lane.right is None:
             left_line_points, right_line_points = self.find_lane_points(closed_img)
         else:
             y, x = img.nonzero()
@@ -369,7 +369,7 @@ class LaneFitter(object):
 
 class Pipeline(object):
     """Full processing pipeline for lane lines."""
-    
+
     def __init__(self, undistorter, lane_extractor, transformer, lane_fitter, show_all=False):
         """
         Constructor that assembles the pipeline from processor stages.
@@ -441,7 +441,7 @@ class Pipeline(object):
     def __call__(self, img):
         """
         Process an image and draw the lane on it.
-        
+
         Generates a composite image with the lane drawn in green and the curvature of the lane
         and position of the vehicle printed on the image.
 
@@ -485,4 +485,3 @@ class Pipeline(object):
         except Exception as e:
             print("Exception: {}".format(e))
             return undistorted_img
-

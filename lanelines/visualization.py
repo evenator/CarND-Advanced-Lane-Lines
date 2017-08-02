@@ -55,7 +55,7 @@ def draw_lane(lane, img_shape, resolution):
 def plot_on_img(img, *lines, color='b'):
     """
     Plot an arbitrary number of arbitrary Lines on an image.
-    
+
     Note that the independent variable is **y**, not x, and that image coordinate conventions apply.
 
     img -- Image (BGR) to plot on top of
