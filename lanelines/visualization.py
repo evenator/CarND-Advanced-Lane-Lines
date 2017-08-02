@@ -1,15 +1,13 @@
+"""Various utility functions for drawing lanes and displaying images."""
+
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 
-'''
-Various utility functions for drawing lanes and displaying images
-'''
-
 
 def comparison_plot(img1, img2, label1, label2, top_label):
-    '''
-    Plot two images side-by-side for comparison as a PyPlot figure
+    """
+    Plot two images side-by-side for comparison as a PyPlot figure.
 
     img1 -- The (BGR) image to show in the left subplot
     img2 -- The (BGR) image to show in the right subplot
@@ -18,7 +16,7 @@ def comparison_plot(img1, img2, label1, label2, top_label):
     top_label -- The overall title of the figure
 
     Returns The PyPlot figure handle
-    '''
+    """
     f, (left, right) = plt.subplots(1, 2)
     if len(img1.shape) == 3:
         img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
@@ -33,13 +31,13 @@ def comparison_plot(img1, img2, label1, label2, top_label):
 
 
 def draw_lane(lane, img_shape, resolution):
-    '''
-    Draw the filled-in lane on the ground image
+    """
+    Draw the filled-in lane on the ground image.
 
     lane -- Lane object representing the left lane
     img_shape -- Shape of the output image **in pixels** as (width, height) tuple
     resolution -- Resolution of the output image in pixels/meter
-    '''
+    """
     canvas = np.zeros((img_shape[0], img_shape[1], 3), np.uint8)
     y_pixels = range(0, img_shape[0], int(resolution/10))  # A polyline with points every 10 cm
     pts_left = lane.left.vals(y_pixels).astype(int)
@@ -55,17 +53,17 @@ def draw_lane(lane, img_shape, resolution):
 
 
 def plot_on_img(img, *lines, color='b'):
-    '''
-    Plot an arbitrary number of arbitrary Lines on an image. Note that
-    the independent variable is **y**, not x, and that image coordinate
-    conventions apply
+    """
+    Plot an arbitrary number of arbitrary Lines on an image.
+    
+    Note that the independent variable is **y**, not x, and that image coordinate conventions apply.
 
     img -- Image (BGR) to plot on top of
     lines -- Any number of Line types
     color -- Matplotlib color (default 'b') to plot the polynomials in
 
     Returns a 3-channel numpy image
-    '''
+    """
     ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
     fig = plt.figure()
     if len(img.shape) < 3 or img.shape[2] < 3:
