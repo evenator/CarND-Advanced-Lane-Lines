@@ -4,7 +4,7 @@ import argparse
 import cv2
 from lanelines.camera_calibration import calibrate_from_images
 from lanelines.processors import Undistorter
-from lanelines.util import comparison_plot
+from lanelines.visualization import comparison_plot
 import numpy as np
 import os
 

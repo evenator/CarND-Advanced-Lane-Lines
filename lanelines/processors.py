@@ -6,7 +6,7 @@ Stringing several of these together allows creation of image processing pipeline
 """
 
 from .datatypes import Lane, Line
-from .util import draw_lane
+from .visualization import draw_lane
 
 import cv2
 import matplotlib.pyplot as plt

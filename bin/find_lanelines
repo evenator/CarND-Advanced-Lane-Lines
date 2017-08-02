@@ -1,12 +1,10 @@
 #! /usr/bin/env python
 
-from lanelines.datatypes import Lane
-from lanelines.util import *
-from lanelines.processors import *
-
 import argparse
 import cv2
+from lanelines.processors import LaneExtractor, LaneFitter, Pipeline, Undistorter
 from math import pi
+from matplotlib import pyplot as plt
 from moviepy.editor import VideoFileClip
 import numpy as np
 import pickle
@@ -19,7 +17,7 @@ def main():
                         default='camera_matrix.npy')
     parser.add_argument('--distortion-coefficients', type=str,
                         help='File path of camera distortion coefficients, stored as .npy',
-                        default='disortion_coefficients.npy')
+                        default='distortion_coefficients.npy')
     parser.add_argument('--projector', type=str,
                         help='Pickled projector to use',
                         default='projector.p')
