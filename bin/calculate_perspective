@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+"""A script to calculate the perspective projector and save it to a Python pickle"""
 
 import cv2
 from lanelines.processors import GroundProjector
@@ -9,11 +10,9 @@ import os
 import pickle
 import textwrap
 
-'''
-Script to generate the perspective projector and save it to a Python pickle.
-'''
 
 def prompt_coordinates(prompt):
+    """Prompt the user for a comma-separated coordinate pair and enforce correctness."""
     while True:
         string_coords = input(prompt)
         split_string_coords = string_coords.split(',')
@@ -28,6 +27,7 @@ def prompt_coordinates(prompt):
         return coords
 
 def prompt_float(prompt):
+    """Prompt the user for a floating point value and enforce correctness."""
     while True:
         string_val = input(prompt)
         try:
@@ -38,6 +38,7 @@ def prompt_float(prompt):
         return val
 
 def prompt_y_n(question):
+    """Prompt the user for a yes or no answer."""
     answer = input(question).lower().strip()
     while True:
         if answer in ['y', 'yes']:
@@ -65,21 +66,26 @@ def main():
                                   "far right marker as two comma-separated numbers: ")
     img_pts = np.float32([far_left, near_left, near_right, far_right])
     
-    offset = prompt_float("How many meters should the top-down image show on either side of the lane? ")
+    offset = prompt_float("How many meters should the top-down image show on "\
+                          "either side of the lane? ")
 
-    top_offset = prompt_float("How many meters should the top-down image extend past the far lane markers? ")
+    top_offset = prompt_float("How many meters should the top-down image "\
+                              "extend past the far lane markers? ")
     
-    bottom_offset = prompt_float("How many meters should the top-down image extend before the close lane markers? ")
+    bottom_offset = prompt_float("How many meters should the top-down image "\
+                                 "extend before the close lane markers? ")
     
     lane_width = prompt_float("In meters, how wide is the lane? ")
     
-    line_length = prompt_float("In meters, how long is it between the near and far lane markers? ")
+    line_length = prompt_float("In meters, how long is it between the near and "\
+                               "far lane markers? ")
     
-    px_m = prompt_float("In pixels per meter, what should the resolution of the top-down image be? ")
+    px_m = prompt_float("In pixels per meter, what should the resolution of "\
+                        "the top-down image be? ")
 
     # Calculate the points' positions on the ground in meters
     obj_pts = [(offset, top_offset),                           # Far left
-               (offset, top_offset + line_length),             # Near Left
+               (offset, top_offset + line_length),             # Near left
                (offset+lane_width, top_offset + line_length),  # Near right
                (offset+lane_width, top_offset)]                # Far right
 
@@ -103,7 +109,7 @@ def main():
     print("Output shape (pixels): {}".format(output_shape))
 
     # Draw results
-    if prompt_y_n("Would you like to preview the results? (y/n)"):
+    if prompt_y_n("Would you like to preview the results? (y/n) "):
         filename = input("Enter the path to the image file: ")
         img = cv2.imread(filename)
 
@@ -117,7 +123,7 @@ def main():
         plt.show()
 
     # Save results
-    if prompt_y_n("Save the results?"):
+    if prompt_y_n("Save the results? (y/n) "):
         out_path = input("Path to save the results (*.p)")
         if not out_path[-2:] == ".p":
             out_path = out_path + ".p"
