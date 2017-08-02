@@ -1,0 +1,76 @@
+#! /usr/bin/env python
+
+import argparse
+import cv2
+from lanelines.processors import LaneExtractor, LaneFitter, Pipeline, Undistorter
+from math import pi
+from matplotlib import pyplot as plt
+from moviepy.editor import VideoFileClip
+import numpy as np
+import pickle
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Process an image to find lane lines')
+    parser.add_argument('--camera-matrix', type=str,
+                        help='File path of camera matrix, stored as .npy',
+                        default='camera_matrix.npy')
+    parser.add_argument('--distortion-coefficients', type=str,
+                        help='File path of camera distortion coefficients, stored as .npy',
+                        default='distortion_coefficients.npy')
+    parser.add_argument('--projector', type=str,
+                        help='Pickled projector to use',
+                        default='projector.p')
+    parser.add_argument('--show-all', action='store_true',
+                        help='Show all intermediate images')
+    parser.add_argument('--subclip', type=float, nargs=2, required=False,
+                        help='Beginning and end times of video')
+    parser.add_argument('input_file', type=str,
+                        help='File path of the image/video to process')
+    parser.add_argument('output_file', type=str,
+                        help="File path to store the output", nargs='?')
+    args = parser.parse_args()
+
+    # Load the undistorter from files
+    K = np.load(args.camera_matrix)
+    D = np.load(args.distortion_coefficients)
+    undistorter = Undistorter(K, D)
+
+    # Load the projector/transformer from file
+    with open(args.projector, 'rb') as f:
+        transformer = pickle.load(f)
+
+    # Set up the binary lane extractor
+    lane_extractor = LaneExtractor(0.9)
+
+    # Set up the lane fitter
+    lane_fitter = LaneFitter(transformer.getResolution())
+
+    # Create the processing pipeline
+    process = Pipeline(undistorter, lane_extractor, transformer, lane_fitter, args.show_all)
+
+    # Load and process the file
+    input_ext = args.input_file[-3:]
+    if input_ext in ['jpg', 'png']:
+        input_img = cv2.imread(args.input_file)
+        composite_img = process(input_img)
+        if args.output_file:
+            print("Saving file to {}".format(args.output_file))
+            cv2.imwrite(args.output_file, composite_img)
+        else:
+            plt.figure()
+            composite_img = cv2.cvtColor(composite_img, cv2.COLOR_BGR2RGB)
+            plt.imshow(composite_img)
+            plt.show()
+    elif input_ext in ['mp4']:
+        clip = VideoFileClip(args.input_file)
+        if args.subclip and len(args.subclip) == 2:
+            clip = clip.subclip(args.subclip[0], args.subclip[1])
+        clip = clip.fl_image(process)
+        print("Writing video file to {}".format(args.output_file))
+        clip.write_videofile(args.output_file, audio=False)
+    else:
+        print("Invalid input file extension .{}".format(input_ext))
+
+if __name__ == "__main__":
+    main()

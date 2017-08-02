@@ -1,0 +1,39 @@
+#! /usr/bin/env python
+
+import argparse
+import cv2
+import os
+
+def main():
+    parser = argparse.ArgumentParser(description='A simple utility to extract frames from a video.')
+    parser.add_argument('video_file', type=str, help='Video file to extract frames from')
+    parser.add_argument('min_frame', type=int, default=0,
+                        help='The frame number of the first frame to extract')
+    parser.add_argument('max_frame', type=int, default=-1,
+                        help='The frame number of the last frame to extract, or -1 for the last frame')
+    parser.add_argument('output_dir', type=str,
+                        help='Directory to write extracted frames. If it does not exist, it will be'
+                             'created.')
+    args = parser.parse_args()
+
+    video = cv2.VideoCapture(args.video_file)
+
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    frame = 0
+    if args.max_frame > 0:
+        def frame_in_range(x):
+            return x >= args.min_frame and x <= args.max_frame
+    else:
+        def frame_in_range(x):
+            return x > args.min_frame
+    while(video.isOpened()):
+        success, image = video.read()
+        if frame_in_range(frame):
+            cv2.imwrite(args.output_dir + '/frame_{}.jpg'.format(frame), image)
+        frame += 1
+    video.release()
+
+if __name__ == "__main__":
+    main()
