@@ -79,24 +79,28 @@ Top-down Perspective Transform
 The third step of the pipeline is a perspective transformation from the camera's
 point of view to a top-down perspective. This is accomplished with a
 `GroundProjector` object. `GroundProjector` is a processor class that I defined
-in `lanelines/processors.py` that encapsulates methods for transforming between the camera
-perspective and the top-down perspective.
+in `lanelines/processors.py` that encapsulates methods for transforming between
+the camera perspective and the top-down perspective.
 
 The `GroundProjector` needs a perspective transformation matrix, which I 
-calculated in the script in `bin/perspective_calculation`. It has four points
-that I manually picked in `straight_lines1.jpg` with known scale. I was
-able to determine the scale by the length and separation of the dashed lane
-lines on the right, which are a known distance apart. The script calculates the
-output points necessary for a top-down image that shows the lane plus 2 meters
-on either side, stretching from the hood of the car to 3 meters past the
-furthest lane marker chosen, with a top-down image resolution of 200 pixels per
-meter, for a resolution of 0.5 cm per pixel. `bin/perspective_calculation`
-calculates the perspective transform matrix from the four point correspondences
-using OpenCV's `getPerspectiveTransform()` method. Above, you can see the
+calculated in the script in `bin/calculate_perspective`. It prompts the user for
+four points that form a rectangle on the ground with known dimensions (lane lines
+are useful for this.) It then prompts the user for the dimensions of the rectangle
+and the desired size and scale of the transformed top-down image.
+`bin/calculate_perspective` calculates the perspective transform matrix from the
+four point correspondences using OpenCV's `getPerspectiveTransform()` method.
+`bin/calculate_perspective` constructs a `GroundProjector` object and saves it
+in a Python pickle file, which is loaded by the pipeline and used for processing.
+
+When I created the top-down image for my Udacity project, I picked four points in
+`straight_lines1.jpg` with known scale. I was able to determine the scale by the
+length and separation of the dashed lane lines on the right, which are a known
+distance apart. I used the script to calculate a top-down image that showed the
+lane plus 2 meters on either side, stretching from the hood of the car to 3 meters
+past the furthest lane marker chosen, with a top-down image resolution of 200
+pixels per meter, for a resolution of 0.5 cm per pixel. Above, you can see the
 rectangle defined by these four points before (left) and after (right)
-transformation. `bin/perspective_calculation` constructs a `GroundProjector`
-object and saves with a Python pickle to `projector.p`, which is loaded by the
-pipeline and used for processing.
+transformation. 
 
 Here, you can see the same binary image from the previous step in the
 pipeline transformed into the top-down perspective:

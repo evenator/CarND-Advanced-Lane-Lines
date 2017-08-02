@@ -1,0 +1,129 @@
+#! /usr/bin/env python
+
+import cv2
+from lanelines.processors import GroundProjector
+from lanelines.visualization import comparison_plot
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pickle
+import textwrap
+
+'''
+Script to generate the perspective projector and save it to a Python pickle.
+'''
+
+def prompt_coordinates(prompt):
+    while True:
+        string_coords = input(prompt)
+        split_string_coords = string_coords.split(',')
+        if len(split_string_coords) != 2:
+            print("Try again!")
+            continue
+        try:
+            coords = [float(x.strip()) for x in split_string_coords]
+        except (TypeError, ValueError):
+            print("Try again!")
+            continue
+        return coords
+
+def prompt_float(prompt):
+    while True:
+        string_val = input(prompt)
+        try:
+            val = float(string_val.strip())
+        except (TypeError, ValueError):
+            print("Try again!")
+            continue
+        return val
+
+def prompt_y_n(question):
+    answer = input(question).lower().strip()
+    while True:
+        if answer in ['y', 'yes']:
+            return True
+        elif answer in ['n', 'no']:
+            return False
+        answer = input("Please answer [y]es or [n]o")
+
+def main():
+    print("\n",
+          textwrap.fill("In an image of straight road, select the pixel coordinates of "\
+          "4 points on lane markers. The points should form a rectangle "\
+          "on the ground."),"\n")
+    
+    far_left = prompt_coordinates("Enter the pixel coordinates of the "\
+                                  "far left marker as two comma-separated numbers: ")
+    
+    near_left = prompt_coordinates("Enter the pixel coordinates of the "\
+                                  "near left marker as two comma-separated numbers: ")
+    
+    near_right = prompt_coordinates("Enter the pixel coordinates of the "\
+                                  "near right marker as two comma-separated numbers: ")
+    
+    far_right = prompt_coordinates("Enter the pixel coordinates of the "\
+                                  "far right marker as two comma-separated numbers: ")
+    img_pts = np.float32([far_left, near_left, near_right, far_right])
+    
+    offset = prompt_float("How many meters should the top-down image show on either side of the lane? ")
+
+    top_offset = prompt_float("How many meters should the top-down image extend past the far lane markers? ")
+    
+    bottom_offset = prompt_float("How many meters should the top-down image extend before the close lane markers? ")
+    
+    lane_width = prompt_float("In meters, how wide is the lane? ")
+    
+    line_length = prompt_float("In meters, how long is it between the near and far lane markers? ")
+    
+    px_m = prompt_float("In pixels per meter, what should the resolution of the top-down image be? ")
+
+    # Calculate the points' positions on the ground in meters
+    obj_pts = [(offset, top_offset),                           # Far left
+               (offset, top_offset + line_length),             # Near Left
+               (offset+lane_width, top_offset + line_length),  # Near right
+               (offset+lane_width, top_offset)]                # Far right
+
+    # Convert from meters to pixels on the ground
+    obj_pts = np.float32(obj_pts) * px_m
+
+    # Calculate the perspective matrix
+    P = cv2.getPerspectiveTransform(img_pts, obj_pts)
+
+    # Calculate the shape of the output image
+    output_shape = (int(px_m * (offset * 2 + lane_width)),
+                    int(px_m * (top_offset + bottom_offset + line_length)))
+
+    # Create a projector object
+    projector = GroundProjector(P, px_m, output_shape)
+
+    # Print results
+    print("Projection matrix:")
+    print(P)
+    print("Pixels per meter: {}".format(px_m))
+    print("Output shape (pixels): {}".format(output_shape))
+
+    # Draw results
+    if prompt_y_n("Would you like to preview the results? (y/n)"):
+        filename = input("Enter the path to the image file: ")
+        img = cv2.imread(filename)
+
+        transformed_pts = projector.transformPoint(img_pts).astype(np.int32)
+        img_pts = img_pts.astype(np.int32)
+        warped_img = projector.transformImage(img)
+
+        cv2.polylines(img, [img_pts], isClosed=True, color=(255, 0, 0), thickness=3)
+        cv2.polylines(warped_img, transformed_pts, isClosed=True, color=(255, 0, 0), thickness=int(px_m/10))
+        comparison_plot(img, warped_img, 'Original', 'Warped', filename)
+        plt.show()
+
+    # Save results
+    if prompt_y_n("Save the results?"):
+        out_path = input("Path to save the results (*.p)")
+        if not out_path[-2:] == ".p":
+            out_path = out_path + ".p"
+        print("Saving the projector to " + out_path)
+        with open(out_path, 'wb') as f:
+            pickle.dump(projector, f)
+
+if __name__ == "__main__":
+    main()
