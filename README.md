@@ -27,13 +27,13 @@ Camera Calibration and Distortion Correction
 ![Distortion Corrected Checkerboard](output_images/checkerboard.png)
 
 The first step of the processing pipeline is undistortion, which is accomplished
-using the `Undistorter` defined in `processors.py`. The `Undistorter` uses
+using the `Undistorter` defined in `lanelines/processors.py`. The `Undistorter` uses
 OpenCV's `undistort()` function to correct for lens distortion in the input
 image.
 
 The `undistort()` function requires a camera calibration matrix and a vector of
 distortion coefficients. The code to generate the camera calibration can be
-found in `camera_calibration.py`, which is a standalone script to generate these
+found in `bin/calibrate_camera`, which is a standalone script to generate these
 parameters from a directory of chess board images. It opens all of the images
 in the directory, finds the corners of the chessboards, and then uses OpenCV's
 `calibrateCamera()` function to generate a camera calibration matrix and
@@ -79,22 +79,22 @@ Top-down Perspective Transform
 The third step of the pipeline is a perspective transformation from the camera's
 point of view to a top-down perspective. This is accomplished with a
 `GroundProjector` object. `GroundProjector` is a processor class that I defined
-in `processors.py` that encapsulates methods for transforming between the camera
+in `lanelines/processors.py` that encapsulates methods for transforming between the camera
 perspective and the top-down perspective.
 
 The `GroundProjector` needs a perspective transformation matrix, which I 
-calculated in the script in `perspective_calculation.py`. It has four points
+calculated in the script in `bin/perspective_calculation`. It has four points
 that I manually picked in `straight_lines1.jpg` with known scale. I was
 able to determine the scale by the length and separation of the dashed lane
 lines on the right, which are a known distance apart. The script calculates the
 output points necessary for a top-down image that shows the lane plus 2 meters
 on either side, stretching from the hood of the car to 3 meters past the
 furthest lane marker chosen, with a top-down image resolution of 200 pixels per
-meter, for a resolution of 0.5 cm per pixel. `perspective_calculation.py`
+meter, for a resolution of 0.5 cm per pixel. `bin/perspective_calculation`
 calculates the perspective transform matrix from the four point correspondences
 using OpenCV's `getPerspectiveTransform()` method. Above, you can see the
 rectangle defined by these four points before (left) and after (right)
-transformation. `perspective_calculation.py` constructs a `GroundProjector`
+transformation. `bin/perspective_calculation` constructs a `GroundProjector`
 object and saves with a Python pickle to `projector.p`, which is loaded by the
 pipeline and used for processing.
 
@@ -184,7 +184,7 @@ is used for the line fit. The actual polynomial fit is the same, but instead
 of using the result directly, it is fed into an exponential filter with a
 smoothing factor of 0.2. This filters out "jitter" and outlier frames at the
 cost of causing the lanes estimate to change more slowly. The code for this
-filter is in `datatypes.py`, which defines the `FilteredLine` data type.
+filter is in `lanelines/datatypes.py`, which defines the `FilteredLine` data type.
 
 Discussion
 ----------
