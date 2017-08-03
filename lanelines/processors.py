@@ -154,9 +154,9 @@ class LaneExtractor(object):
 
     def extract_lanes(self, img, show_plots=False):
         """
-        Process an RGB image and return a binary image.
+        Process a BGR image and return a binary image.
 
-        img -- The RGB image to process (in camera perspective)
+        img -- The BGR image to process (in camera perspective)
         show_plots -- Show intermediate images in PyPlot figures (default False)
 
         Returns a binary image in the camera perspective
