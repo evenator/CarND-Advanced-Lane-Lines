@@ -24,10 +24,10 @@ general process for this project is as follows:
 Installing This Package
 -----------------------
 
-You can install this package (and all its dependencies) with `pip`:
+You can install the latest master version of this package (and all its dependencies) with `pip`:
 
 ```bash
-pip install git+https://github.com/evenator/CarND-Advanced-Lane-Lines.git
+pip install https://github.com/evenator/CarND-Advanced-Lane-Lines/archive/master.zip
 ```
 
 Using This Package
