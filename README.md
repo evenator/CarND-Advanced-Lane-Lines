@@ -21,6 +21,36 @@ general process for this project is as follows:
   image, as well as a numerical estimate of the lane curvature and vehicle
   position.
 
+Installing This Package
+-----------------------
+
+You can install this package (and all its dependencies) with `pip`:
+
+```bash
+pip install git+https://github.com/evenator/CarND-Advanced-Lane-Lines.git
+```
+
+Using This Package
+------------------
+
+First, you'll need to calibrate your camera to correct for lens distortion. Create a directory of
+checkerboard images like the images in `examples/camera_cal_images/`. Then, use the
+`calibrate_camera` script to generate calibration parameters, which will be saved as numpy files.
+You can get help with `calibrate_camera --help`
+
+Next, you'll need to calibrate the perspective transform from your camera to the ground. For this,
+you'll need to mount the camera in the vehicle and take an image of very large rectangle of known
+size on the ground in front of the vehicle. Dashed lane markers on a straight road work well for
+this. Run `calculate_perspective` and follow the directions to create a projector, which is saved
+as a Python pickle file. `calculate_perspective` is interactive and should be relatively intuitive.
+
+Finally, you can use the camera calibration data and projector you created to process images and
+video with `find_lanelines`. You can get help with `find_lanelines --help`.
+
+Of course, you can also use the classes and methods defined here in your own Python programs. The
+modules in the `lanelines` package are all documented to make them as easy to use as possible. In
+the future, I'll publish this documentation with Sphinx.
+
 Camera Calibration and Distortion Correction
 --------------------------------------------
 
@@ -174,7 +204,7 @@ The other test images can be found in the `output_images` directory as well.
 Video Pipeline
 --------------
 
-The output of the video pipeline can be found [here](project_video_out.mp4).
+The output of the video pipeline can be found [here](https://youtu.be/A8eEAL4L25s).
 
 The video pipeline has a few differences from the single-image pipeline. All of
 these differences are based on the concept of persisting the lane line estimate
