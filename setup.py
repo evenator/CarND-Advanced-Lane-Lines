@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='lanelines',
-      version='1.0.0',
+      version='2.0.0',
       description='Lane line detection for self driving cars.',
       url='https://github.com/evenator/CarND-Advanced-Lane-Lines',
       author='Ed Venator',
